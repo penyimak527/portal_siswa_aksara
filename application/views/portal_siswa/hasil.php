@@ -1,3 +1,42 @@
+<?php
+if (!function_exists('portal_preview_h')) {
+    function portal_preview_h($text)
+    {
+        return htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8');
+    }
+}
+?>
+
+<style>
+    .preview-bs-list {
+        margin-bottom: 8px;
+    }
+
+    .preview-bs-item {
+        border: 1px solid #e9ecef;
+        border-radius: 10px;
+        padding: 8px 10px;
+        margin-bottom: 7px;
+        background: #ffffff;
+    }
+
+    .preview-bs-statement {
+        font-weight: 600;
+        color: #27324a;
+        line-height: 1.45;
+        margin-bottom: 4px;
+    }
+
+    .preview-bs-value {
+        font-size: 12px;
+        color: #64748b;
+    }
+
+    .preview-bs-value b {
+        color: #27324a;
+    }
+</style>
+
 <div class="card student-card mb-3">
     <div class="card-body">
         <h5 class="fw-bold mb-3">Hasil Pengerjaan</h5>
@@ -65,9 +104,40 @@
                         <img src="<?= $row['gambar_soal']; ?>" class="img-fluid rounded mb-2" alt="Gambar Soal">
                     <?php endif; ?>
                     <div class="small">Jawaban Kamu:</div>
-                    <div class="fw-bold mb-2"><?= $row['jawaban_siswa_text']; ?></div>
+                    <?php if (($row['tipe_soal'] ?? '') == 'benar_salah' && !empty($row['jawaban_siswa_items'])) : ?>
+                        <div class="preview-bs-list">
+                            <?php foreach ($row['jawaban_siswa_items'] as $item) : ?>
+                                <div class="preview-bs-item">
+                                    <div class="preview-bs-statement">
+                                        <?= (int) ($item['nomor'] ?? 0); ?>. <?= portal_preview_h($item['teks'] ?? '-'); ?>
+                                    </div>
+                                    <div class="preview-bs-value">
+                                        Jawaban Kamu: <b><?= portal_preview_h($item['jawaban'] ?? '-'); ?></b>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else : ?>
+                        <div class="fw-bold mb-2"><?= $row['jawaban_siswa_text']; ?></div>
+                    <?php endif; ?>
+
                     <div class="small">Jawaban Benar:</div>
-                    <div class="fw-bold mb-2"><?= $row['jawaban_benar_text']; ?></div>
+                    <?php if (($row['tipe_soal'] ?? '') == 'benar_salah' && !empty($row['jawaban_benar_items'])) : ?>
+                        <div class="preview-bs-list">
+                            <?php foreach ($row['jawaban_benar_items'] as $item) : ?>
+                                <div class="preview-bs-item">
+                                    <div class="preview-bs-statement">
+                                        <?= (int) ($item['nomor'] ?? 0); ?>. <?= portal_preview_h($item['teks'] ?? '-'); ?>
+                                    </div>
+                                    <div class="preview-bs-value">
+                                        Jawaban Benar: <b><?= portal_preview_h($item['jawaban'] ?? '-'); ?></b>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else : ?>
+                        <div class="fw-bold mb-2"><?= $row['jawaban_benar_text']; ?></div>
+                    <?php endif; ?>
                     <div class="small">Status:</div>
                     <div class="fw-bold mb-2"><?= $row['status_jawaban']; ?></div>
                     <?php if (!empty($row['pembahasan'])) : ?>

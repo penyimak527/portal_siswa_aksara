@@ -867,6 +867,38 @@ if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
         return $map[$jawaban] ?? $jawaban;
     }
 
+
+    private function benar_salah_preview_items($id_soal, $jawaban)
+    {
+        $jawaban = is_array($jawaban) ? $jawaban : [];
+
+        $rows = $this->db->query("SELECT * FROM soal_jawaban WHERE id_soal = ? ORDER BY urutan ASC, id ASC", [$id_soal])->result_array();
+        $data = [];
+
+        foreach ($rows as $idx => $row) {
+            $id_jawaban = (string) ($row['id'] ?? '');
+            $nilai = '-';
+
+            if (isset($jawaban[$row['id']])) {
+                $nilai = $jawaban[$row['id']];
+            } elseif (isset($jawaban[$id_jawaban])) {
+                $nilai = $jawaban[$id_jawaban];
+            }
+
+            if ($nilai === null || $nilai === '') {
+                $nilai = '-';
+            }
+
+            $data[] = [
+                'nomor' => $idx + 1,
+                'teks' => $row['isi_jawaban'] ?? '-',
+                'jawaban' => $nilai
+            ];
+        }
+
+        return $data;
+    }
+
     public function preview_jawaban($id_pengerjaan)
     {
         $pengerjaan = $this->pengerjaan_detail($id_pengerjaan);
@@ -894,7 +926,13 @@ if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
             $jawab = json_decode($row['jawaban_siswa'], true);
             $kunci = json_decode($row['jawaban_benar'], true);
             $rows[$i]['jawaban_siswa_text'] = $this->label_jawaban_text($row['id_soal'], $jawab);
-            $rows[$i]['jawaban_benar_text'] = is_array($kunci) ? implode(', ', $kunci) : (string) $kunci;
+            $rows[$i]['jawaban_benar_text'] = $this->label_jawaban_text($row['id_soal'], $kunci);
+            $rows[$i]['jawaban_siswa_items'] = [];
+            $rows[$i]['jawaban_benar_items'] = [];
+            if (($row['tipe_soal'] ?? '') == 'benar_salah') {
+                $rows[$i]['jawaban_siswa_items'] = $this->benar_salah_preview_items($row['id_soal'], $jawab);
+                $rows[$i]['jawaban_benar_items'] = $this->benar_salah_preview_items($row['id_soal'], $kunci);
+            }
         }
 
         return $rows;
