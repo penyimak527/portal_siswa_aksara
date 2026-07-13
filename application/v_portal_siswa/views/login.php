@@ -13,12 +13,11 @@
         .portal-login-page {
             --aksara-yellow: #f2ad0d;
             --aksara-yellow-dark: #c98600;
-            --aksara-yellow-hover: #d99a00;
             --aksara-yellow-soft: #fff6dd;
             --aksara-black: #050505;
             --aksara-dark: #111827;
             --aksara-muted: #64748b;
-            background: #ffffff;
+            background: #fffaf0;
         }
 
         .portal-login-page .login-shell {
@@ -85,8 +84,8 @@
         .portal-login-page .btn-login:hover,
         .portal-login-page .btn-login:focus {
             color: #fff;
-            background: var(--aksara-yellow-hover);
-            border-color: var(--aksara-yellow-hover);
+            background: var(--aksara-yellow-dark);
+            border-color: var(--aksara-yellow-dark);
         }
 
         .portal-login-page .alert-light {

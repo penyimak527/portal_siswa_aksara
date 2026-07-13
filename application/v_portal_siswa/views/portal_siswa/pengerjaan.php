@@ -10,38 +10,41 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        :root {
+        .portal-exam-page {
             --aksara-yellow: #f2ad0d;
-            --aksara-yellow-dark: #d99a06;
-            --aksara-yellow-soft: #fff4d6;
+            --aksara-yellow-dark: #c98600;
+            --aksara-yellow-soft: #fff6dd;
             --aksara-black: #050505;
             --aksara-dark: #111827;
             --aksara-border: #eef0f4;
             --aksara-green: #10b981;
+            --aksara-green-soft: #ecfdf5;
             --aksara-blue: #2563eb;
-        }
-
-        body {
-            background: #f6f8fb;
+            --aksara-blue-soft: #eff6ff;
+            --aksara-purple-soft: #f5f3ff;
+            background: #fffaf0;
             padding-bottom: 24px;
         }
 
-        .student-shell { max-width: 820px; margin: 0 auto; }
+        .portal-exam-page .student-shell {
+            max-width: 820px;
+            margin: 0 auto;
+        }
 
-        .sticky-exam {
+        .portal-exam-page .sticky-exam {
             position: sticky;
             top: 0;
             z-index: 99;
             background: #ffffff;
             border-bottom: 0;
-            box-shadow: 0 6px 18px rgba(5, 5, 5, .04);
+            box-shadow: 0 6px 18px rgba(5, 5, 5, .05);
         }
 
-        .sticky-exam h6 {
+        .portal-exam-page .sticky-exam h6 {
             color: var(--aksara-black);
         }
 
-        .student-card {
+        .portal-exam-page .student-card {
             border: 1px solid var(--aksara-border);
             border-radius: 18px;
             box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
@@ -49,7 +52,7 @@
             background: #fff;
         }
 
-        .answer-option {
+        .portal-exam-page .answer-option {
             border: 1px solid #e5e7eb;
             border-radius: 14px;
             padding: 12px;
@@ -58,15 +61,36 @@
             display: block;
         }
 
-        .answer-option.active {
-            border-color: rgba(242, 173, 13, .48);
-            background: #fffaf0;
+        .portal-exam-page .answer-option:nth-child(4n+1) {
+            background: #fff6dd;
         }
 
-        .question-panel { display: none; }
-        .question-panel.active { display: block; }
+        .portal-exam-page .answer-option:nth-child(4n+2) {
+            background: #eff6ff;
+        }
 
-        .question-number {
+        .portal-exam-page .answer-option:nth-child(4n+3) {
+            background: #ecfdf5;
+        }
+
+        .portal-exam-page .answer-option:nth-child(4n+4) {
+            background: #f5f3ff;
+        }
+
+        .portal-exam-page .answer-option.active {
+            border-color: rgba(242, 173, 13, .70);
+            background: var(--aksara-yellow-soft);
+        }
+
+        .portal-exam-page .question-panel {
+            display: none;
+        }
+
+        .portal-exam-page .question-panel.active {
+            display: block;
+        }
+
+        .portal-exam-page .question-number {
             width: 38px;
             height: 38px;
             border-radius: 12px;
@@ -75,61 +99,91 @@
             font-weight: 700;
         }
 
-        .question-number.active {
-            background: var(--aksara-yellow);
-            color: var(--aksara-black);
-            border-color: var(--aksara-yellow);
+        .portal-exam-page .question-number.active,
+        .portal-exam-page .question-number.answered.active {
+            background: var(--aksara-blue);
+            color: #fff;
+            border-color: var(--aksara-blue);
         }
 
-        .question-number.answered {
+        .portal-exam-page .question-number.answered:not(.active) {
             background: var(--aksara-green);
             color: #fff;
             border-color: var(--aksara-green);
         }
 
-        .btn-touch { min-height: 42px; border-radius: 12px; }
+        .portal-exam-page .exam-legend {
+            display: inline-block;
+            padding: .35em .65em;
+            border-radius: .375rem;
+            font-size: .75em;
+            font-weight: 700;
+            line-height: 1;
+        }
 
-        .btn-primary {
+        .portal-exam-page .exam-legend-green {
+            background: var(--aksara-green);
+            color: #fff;
+        }
+
+        .portal-exam-page .exam-legend-blue {
+            background: var(--aksara-blue);
+            color: #fff;
+        }
+
+        .portal-exam-page .exam-legend-white {
+            background: #fff;
+            color: var(--aksara-dark);
+            border: 1px solid #dee2e6;
+        }
+
+        .portal-exam-page .btn-touch {
+            min-height: 42px;
+            border-radius: 12px;
+        }
+
+        .portal-exam-page .btn-primary {
             background: var(--aksara-yellow);
             border-color: var(--aksara-yellow);
             color: var(--aksara-black);
             font-weight: 800;
         }
 
-        .btn-primary:hover,
-        .btn-primary:focus {
+        .portal-exam-page .btn-primary:hover,
+        .portal-exam-page .btn-primary:focus {
             background: var(--aksara-yellow-dark);
             border-color: var(--aksara-yellow-dark);
-            color: var(--aksara-black);
+            color: #fff;
         }
 
-        .btn-success {
+        .portal-exam-page .btn-success {
             background: var(--aksara-green);
             border-color: var(--aksara-green);
             font-weight: 800;
         }
 
-        .badge.bg-danger {
+        .portal-exam-page .badge.bg-danger {
             background: var(--aksara-black) !important;
             color: #fff;
             border: 1px solid var(--aksara-yellow);
         }
 
-        .badge.bg-primary-subtle,
-        .badge.text-primary {
+        .portal-exam-page .badge.bg-primary,
+        .portal-exam-page .badge.bg-primary-subtle,
+        .portal-exam-page .badge.text-primary {
             background-color: var(--aksara-yellow-soft) !important;
             color: #a16207 !important;
         }
 
-        .question-image {
+        .portal-exam-page .question-image {
             max-height: 260px;
             object-fit: contain;
-            background: #f8fafc;
-            border: 1px solid #eef0f4;
+            background: #fff;
+            border: 1px solid rgba(242, 173, 13, .25);
         }
     </style>
 </head>
-<body>
+<body class="portal-exam-page">
     <div class="sticky-exam">
         <div class="student-shell px-3 py-3 d-flex justify-content-between align-items-center">
             <div>
@@ -150,9 +204,9 @@
                     <?php endforeach; ?>
                 </div>
                 <div class="small mt-3 text-muted">
-                    <span class="badge bg-success">Hijau</span> sudah dijawab,
-                    <span class="badge bg-primary">Biru</span> sedang dibuka,
-                    <span class="badge bg-light text-dark border">Putih</span> belum dijawab.
+                    <span class="exam-legend exam-legend-green">Hijau</span> sudah dijawab,
+                    <span class="exam-legend exam-legend-blue">Biru</span> sedang dibuka,
+                    <span class="exam-legend exam-legend-white">Putih</span> belum dijawab.
                 </div>
             </div>
         </div>
@@ -230,11 +284,20 @@
         let intervalTimer;
         let sedangSubmit = false;
         let lockKeluar = false;
+        const AKSARA_LAST_QUESTION_KEY = 'aksara_last_question_<?= (int) $pengerjaan['id']; ?>';
 
         $(document).ready(function () {
             jalanTimer();
             tandaiTerjawab(false);
             updateOptionActive();
+
+            let lastIndex = sessionStorage.getItem(AKSARA_LAST_QUESTION_KEY);
+            if (lastIndex !== null && !isNaN(parseInt(lastIndex))) {
+                let indexRestore = parseInt(lastIndex);
+                if (indexRestore >= 0 && indexRestore < totalSoal) {
+                    bukaSoal(indexRestore, false);
+                }
+            }
         });
 
         $(document).on('change', 'input[type="radio"], input[type="checkbox"]', function () {
@@ -251,12 +314,22 @@
             });
         }
 
-        function bukaSoal(index) {
+        function bukaSoal(index, simpanPosisi = true) {
+            index = parseInt(index, 10);
+            if (isNaN(index) || index < 0 || index >= totalSoal) {
+                index = 0;
+            }
+
             indexSoal = index;
             $('.question-panel').removeClass('active');
             $('.question-panel').eq(index).addClass('active');
             $('.question-number').removeClass('active');
             $('.question-number').eq(index).addClass('active');
+
+            if (simpanPosisi) {
+                sessionStorage.setItem(AKSARA_LAST_QUESTION_KEY, index);
+            }
+
             window.scrollTo({top: 0, behavior: 'smooth'});
         }
 
@@ -357,6 +430,7 @@
                 },
                 success: function (res) {
                   if (res.result == 'true') {
+    sessionStorage.removeItem(AKSARA_LAST_QUESTION_KEY);
     let redirectUrl = res.redirect || '<?= base_url('pengerjaan/hasil/' . $pengerjaan['id']) ?>';
 
     if (window.parent && window.parent !== window) {

@@ -122,6 +122,23 @@ class M_portal_siswa extends CI_Model
         $bulan = (int) date('m');
         return $bulan >= 7 ? $tahun . '/' . ($tahun + 1) : ($tahun - 1) . '/' . $tahun;
     }
+public function kelas_riwayat_result()
+{
+    $id_siswa = $this->current_id_siswa();
+
+    return $this->db->query("
+        SELECT DISTINCT 
+            k.id,
+            k.nama_kelas,
+            j.nama_jenjang
+        FROM siswa_pengerjaan ps
+        LEFT JOIN kelas k ON k.id = ps.id_kelas
+        INNER JOIN jenjang j ON k.id_jenjang = j.id
+        WHERE ps.id_siswa = ?
+        AND ps.id_kelas IS NOT NULL
+        ORDER BY k.nama_kelas ASC
+    ", [$id_siswa])->result_array();
+}
 
     private function current_id_siswa()
     {
@@ -186,7 +203,6 @@ class M_portal_siswa extends CI_Model
         $id_kelas = $this->current_id_kelas();
 
         $where = [
-            "ss.status_aktif = '1'",
             "ss.status_hapus IS NULL",
             "ssk.id_kelas = ?"
         ];
@@ -223,13 +239,17 @@ class M_portal_siswa extends CI_Model
                 continue;
             }
 
-            // Bimbel wajib ikut jadwal.
-            // Kalau sesi habis dan belum Bimbel, jangan tampil.
-            if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
-                if (!$this->sesi_masuk_jadwal($row)) {
-                    continue;
-                }
-            }
+           // Bimbel wajib aktif dan wajib ikut jadwal.
+// Kalau sesi nonaktif / jadwal habis dan belum Bimbel, jangan tampil.
+if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
+    if ((string) ($row['status_aktif'] ?? '0') !== '1') {
+        continue;
+    }
+
+    if (!$this->sesi_masuk_jadwal($row)) {
+        continue;
+    }
+}
 
             // Rumah boleh walaupun jadwal sudah habis, asalkan sesi masih aktif.
             $row['jenis_pengerjaan'] = $attempt['jenis_pengerjaan'];
@@ -284,11 +304,15 @@ class M_portal_siswa extends CI_Model
             return null;
         }
 
-        if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
-            if (!$this->sesi_masuk_jadwal($row)) {
-                return null;
-            }
-        }
+       if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
+    if ((string) ($row['status_aktif'] ?? '0') !== '1') {
+        return null;
+    }
+
+    if (!$this->sesi_masuk_jadwal($row)) {
+        return null;
+    }
+}
 
         $row['jenis_pengerjaan'] = $attempt['jenis_pengerjaan'];
         $row['urutan_pengerjaan'] = $attempt['urutan'];
@@ -358,17 +382,17 @@ class M_portal_siswa extends CI_Model
     public function riwayat_result($limit = null)
     {
         $id_siswa = $this->current_id_siswa();
-        $tahun_ajaran = trim($this->input->get_post('tahun_ajaran'));
+        $id_kelas = trim($this->input->get_post('id_kelas'));
         $mapel = trim($this->input->get_post('mapel'));
         $jenis = trim($this->input->get_post('jenis'));
 
         $where = ["ps.id_siswa = ?", "ps.status_pengerjaan IN ('Selesai','Waktu Habis')"];
         $params = [$id_siswa];
 
-        if ($tahun_ajaran != '') {
-            $where[] = "ss.tahun_ajaran = ?";
-            $params[] = $tahun_ajaran;
-        }
+        if ($id_kelas != '') {
+    $where[] = "ps.id_kelas = ?";
+    $params[] = $id_kelas;
+}
         if ($mapel != '') {
             $where[] = "ss.id_mata_pelajaran = ?";
             $params[] = $mapel;
@@ -383,10 +407,14 @@ class M_portal_siswa extends CI_Model
                     ss.nama_sesi,
                     ps.jenis_pengerjaan,
                     ss.tahun_ajaran,
+                     k.nama_kelas,
+                     j.nama_jenjang,
                     mp.nama_mata_pelajaran,
                     ks.nama_kategori_soal
                 FROM siswa_pengerjaan ps
                 INNER JOIN soal_sesi ss ON ss.id = ps.id_sesi_soal
+                LEFT JOIN kelas k ON k.id = ps.id_kelas
+                INNER JOIN jenjang j ON k.id_jenjang = j.id
                 LEFT JOIN mata_pelajaran mp ON mp.id = ss.id_mata_pelajaran
                 LEFT JOIN soal_kategori ks ON ks.id = ss.id_kategori_soal
                 WHERE " . implode(' AND ', $where) . "
@@ -412,9 +440,9 @@ class M_portal_siswa extends CI_Model
             return ['status' => false, 'message' => 'Sesi soal tidak ditemukan.'];
         }
 
-        if ((string) $sesi['status_aktif'] !== '1') {
-            return ['status' => false, 'message' => 'Sesi soal sudah tidak aktif.'];
-        }
+        // if ((string) $sesi['status_aktif'] !== '1') {
+        //     return ['status' => false, 'message' => 'Sesi soal sudah tidak aktif.'];
+        // }
 
         if ($this->ada_tunggakan_bulan_lalu($id_siswa)) {
             return [
@@ -440,9 +468,14 @@ class M_portal_siswa extends CI_Model
 
         $jenis_pengerjaan = $attempt['jenis_pengerjaan'];
 
-        if ($jenis_pengerjaan == 'Bimbel' && !$this->sesi_masuk_jadwal($sesi)) {
-            return ['status' => false, 'message' => 'Jadwal pengerjaan Bimbel sudah berakhir.'];
-        }
+      if ($jenis_pengerjaan == 'Bimbel') {
+    if ((string) ($sesi['status_aktif'] ?? '0') !== '1') {
+        return ['status' => false, 'message' => 'Sesi soal sudah tidak aktif.'];
+    }
+
+    if (!$this->sesi_masuk_jadwal($sesi)) {
+        return ['status' => false, 'message' => 'Jadwal pengerjaan Bimbel sudah berakhir.'];
+    }}
 
         $data = [
             'id_sesi_soal' => $id_sesi,

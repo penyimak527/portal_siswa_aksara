@@ -29,7 +29,8 @@ class Riwayat extends CI_Controller
     {
         $data['title'] = 'Riwayat Pengerjaan';
         $data['mapel'] = $this->model->mapel_result();
-        $data['tahun_ajaran'] = $this->model->tahun_ajaran_result();
+        // $data['tahun_ajaran'] = $this->model->tahun_ajaran_result();
+        $data['kelas'] = $this->model->kelas_riwayat_result();
 
         $this->load->view('template_siswa/header', $data);
         $this->load->view('portal_siswa/riwayat', $data);

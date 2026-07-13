@@ -22,10 +22,12 @@
 	<link href="<?= base_url(); ?>assets/css/jquery.autocomplete.css" rel="stylesheet" type="text/css" />
 	<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <style>
-        :root {
+        .portal-siswa-page {
             --aksara-yellow: #f2ad0d;
-            --aksara-yellow-dark: #d99a06;
-            --aksara-yellow-soft: #fff4d6;
+            --aksara-yellow-dark: #c98600;
+            --aksara-yellow-hover: #d99a00;
+            --aksara-yellow-soft: #fff6dd;
+            --aksara-yellow-soft-2: #fffaf0;
             --aksara-black: #050505;
             --aksara-dark: #111827;
             --aksara-muted: #64748b;
@@ -38,37 +40,34 @@
             --aksara-purple-soft: #f5f3ff;
             --aksara-red: #ef4444;
             --aksara-red-soft: #fef2f2;
-        }
-
-        body {
-            background: #f6f8fb;
+            --aksara-orange-soft: #fff1e7;
+            background: #ffffff;
             padding-bottom: 78px;
         }
 
-        .student-shell {
+        .portal-siswa-page .student-shell {
             max-width: 820px;
             margin: 0 auto;
         }
 
-        /* Layout tetap sama, hanya diberi ciri khas logo: hitam + kuning */
-        .student-topbar {
+        .portal-siswa-page .student-topbar {
             position: sticky;
             top: 0;
             z-index: 50;
             background: #ffffff;
             border-bottom: 0;
-            box-shadow: 0 6px 18px rgba(5, 5, 5, .04);
+            box-shadow: 0 6px 18px rgba(5, 5, 5, .05);
         }
 
-        .student-topbar h5 {
+        .portal-siswa-page .student-topbar h5 {
             color: var(--aksara-black);
         }
 
-        .student-topbar small {
+        .portal-siswa-page .student-topbar small {
             color: var(--aksara-muted) !important;
         }
 
-        .student-card {
+        .portal-siswa-page .student-card {
             border: 1px solid var(--aksara-border);
             border-radius: 18px;
             box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
@@ -76,129 +75,149 @@
             background: #fff;
         }
 
-        .student-card-soft {
-            background: linear-gradient(135deg, #fff8e7 0%, #ffffff 62%);
-            border-color: rgba(242, 173, 13, .30);
+        .portal-siswa-page .student-card-soft {
+            background: var(--aksara-yellow-soft);
+            border-color: rgba(242, 173, 13, .38);
         }
 
-        .student-card .card-body > h5.fw-bold:first-child,
-        .student-card .card-body .fw-bold.mb-0 {
+        .portal-siswa-page .student-card .card-body > h5.fw-bold:first-child,
+        .portal-siswa-page .student-card .card-body .fw-bold.mb-0 {
             color: var(--aksara-dark);
         }
 
-        .info-label {
+        .portal-siswa-page .info-label {
             color: #6b7280;
             font-size: 12px;
             margin-bottom: 2px;
         }
 
-        .info-value {
+        .portal-siswa-page .info-value {
             font-weight: 700;
             color: var(--aksara-black);
         }
 
-        /* Tetap bentuk card lama, tanpa strip warna samping */
-        .session-card {
-            border: 1px solid var(--aksara-border);
+        .portal-siswa-page .session-card {
+            border: 1px solid rgba(242, 173, 13, .35);
             border-radius: 16px;
             padding: 14px;
             margin-bottom: 12px;
-            background: linear-gradient(135deg, #ffffff 0%, #fffdf7 100%);
+            background: #ffffff;
             box-shadow: 0 5px 16px rgba(15, 23, 42, .035);
         }
 
-        .student-card .bg-light {
-            background-color: #fffaf0 !important;
-            border-color: rgba(242, 173, 13, .18) !important;
+        .portal-siswa-page .student-card .bg-light {
+            background-color: var(--aksara-yellow-soft) !important;
+            border-color: rgba(242, 173, 13, .22) !important;
         }
 
-        .student-card .row.g-2 > div:nth-child(2n) .bg-light {
+        .portal-siswa-page .student-card .row.g-2 > div:nth-child(2n) .bg-light {
             background-color: var(--aksara-blue-soft) !important;
             border-color: rgba(37, 99, 235, .14) !important;
         }
 
-        .student-card .row.g-2 > div:nth-child(3n) .bg-light {
+        .portal-siswa-page .student-card .row.g-2 > div:nth-child(3n) .bg-light {
             background-color: var(--aksara-green-soft) !important;
             border-color: rgba(16, 185, 129, .14) !important;
         }
 
-        .btn-touch {
+        .portal-siswa-page .student-card .row.g-2 > div:nth-child(4n) .bg-light {
+            background-color: var(--aksara-purple-soft) !important;
+            border-color: rgba(139, 92, 246, .14) !important;
+        }
+
+        .portal-siswa-page .btn-touch {
             min-height: 42px;
             border-radius: 12px;
         }
 
-        .btn-primary {
+        .portal-siswa-page .btn-primary {
             background: var(--aksara-yellow);
             border-color: var(--aksara-yellow);
-            color: white;
+            color: var(--aksara-black);
             font-weight: 800;
         }
 
-        .btn-primary:hover,
-        .btn-primary:focus {
-            background: var(--aksara-yellow-dark);
-            border-color: var(--aksara-yellow-dark);
-            color: white;
+        .portal-siswa-page .btn-primary:hover,
+        .portal-siswa-page .btn-primary:focus {
+            background: var(--aksara-yellow-hover);
+            border-color: var(--aksara-yellow-hover);
+            color: #fff;
         }
 
-        .btn-outline-primary {
+        .portal-siswa-page .btn-outline-primary {
             border-color: var(--aksara-yellow);
             color: #a16207;
             font-weight: 700;
+            background: #fff;
         }
 
-        .btn-outline-primary:hover,
-        .btn-outline-primary:focus {
-            background: var(--aksara-yellow);
-            border-color: var(--aksara-yellow);
-            color: white;
+        .portal-siswa-page .btn-outline-primary:hover,
+        .portal-siswa-page .btn-outline-primary:focus {
+            background: var(--aksara-yellow-hover);
+            border-color: var(--aksara-yellow-hover);
+            color: #fff;
         }
 
-        .badge-soft {
+        .portal-siswa-page .badge-soft {
             background: var(--aksara-yellow-soft);
             color: #a16207;
             border: 1px solid rgba(242, 173, 13, .24);
         }
 
-        .badge.bg-primary,
-        .badge.bg-primary-subtle,
-        .badge.text-primary {
+        .portal-siswa-page .badge.bg-primary,
+        .portal-siswa-page .badge.bg-primary-subtle,
+        .portal-siswa-page .badge.text-primary {
             background-color: var(--aksara-yellow-soft) !important;
             color: #a16207 !important;
+            border: 1px solid rgba(242, 173, 13, .20);
         }
 
-        .badge.bg-success-subtle,
-        .badge.text-success {
+        .portal-siswa-page .badge.bg-success-subtle,
+        .portal-siswa-page .badge.text-success {
             background-color: var(--aksara-green-soft) !important;
             color: #059669 !important;
         }
 
-        .materi-bar {
+        .portal-siswa-page .badge.bg-info,
+        .portal-siswa-page .badge.bg-info-subtle,
+        .portal-siswa-page .badge.text-info {
+            background-color: var(--aksara-blue-soft) !important;
+            color: #2563eb !important;
+        }
+
+        .portal-siswa-page .badge.bg-warning,
+        .portal-siswa-page .badge.bg-warning-subtle,
+        .portal-siswa-page .badge.text-warning {
+            background-color: var(--aksara-orange-soft) !important;
+            color: #c2410c !important;
+        }
+
+        .portal-siswa-page .materi-bar {
             height: 8px;
             border-radius: 999px;
             background: #e5e7eb;
             overflow: hidden;
         }
 
-        .materi-bar span {
+        .portal-siswa-page .materi-bar span {
             display: block;
             height: 100%;
-            background: linear-gradient(90deg, var(--aksara-yellow), var(--aksara-green));
+            background: var(--aksara-yellow);
         }
 
-        .result-number {
+        .portal-siswa-page .result-number {
             font-size: 36px;
             line-height: 1;
             color: var(--aksara-yellow-dark) !important;
         }
 
-        .form-control:focus,
-        .form-select:focus {
+        .portal-siswa-page .form-control:focus,
+        .portal-siswa-page .form-select:focus {
             border-color: rgba(242, 173, 13, .72);
             box-shadow: 0 0 0 .2rem rgba(242, 173, 13, .16);
         }
 
-        .bottom-nav {
+        .portal-siswa-page .bottom-nav {
             position: fixed;
             bottom: 0;
             left: 0;
@@ -209,14 +228,14 @@
             box-shadow: 0 -8px 20px rgba(15, 23, 42, .06);
         }
 
-        .bottom-nav-inner {
+        .portal-siswa-page .bottom-nav-inner {
             max-width: 820px;
             margin: 0 auto;
             display: grid;
             grid-template-columns: repeat(4, 1fr);
         }
 
-        .bottom-nav a {
+        .portal-siswa-page .bottom-nav a {
             padding: 9px 4px;
             text-align: center;
             color: #64748b;
@@ -224,23 +243,33 @@
             text-decoration: none;
         }
 
-        .bottom-nav a.active {
+        .portal-siswa-page .bottom-nav a.active {
             color: var(--aksara-black);
             font-weight: 800;
         }
 
-        .bottom-nav a.active i {
+        .portal-siswa-page .bottom-nav a.active i {
             color: var(--aksara-yellow);
         }
 
-        .bottom-nav i {
+        .portal-siswa-page .bottom-nav i {
             display: block;
             font-size: 20px;
             margin-bottom: 2px;
         }
+
+        .portal-siswa-page .bottom-nav a:hover,
+        .portal-siswa-page .bottom-nav a:focus {
+            color: var(--aksara-black);
+        }
+
+        .portal-siswa-page .bottom-nav a:hover i,
+        .portal-siswa-page .bottom-nav a:focus i {
+            color: var(--aksara-yellow);
+        }
     </style>
 </head>
-<body>
+<body class="portal-siswa-page">
     <?php $uri = $this->uri->segment(1); ?>
     <div class="student-topbar" id="header">
         <div class="student-shell px-3 py-3 d-flex align-items-center justify-content-between">
