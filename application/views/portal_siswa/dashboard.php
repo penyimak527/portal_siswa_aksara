@@ -7,7 +7,8 @@
                 <div class="text-muted small">Halo,</div>
                 <h4 class="fw-bold mb-1"><?= $siswa['nama_siswa'] ?? '-'; ?></h4>
                 <div class="small text-muted">Kelas: <?= $siswa['nama_kelas'] ?? '-'; ?> &bull; Tahun Ajaran:
-                    <?= $tahun_ajaran; ?></div>
+                    <?= $tahun_ajaran; ?>
+                </div>
             </div>
         </div>
     </div>
@@ -63,7 +64,8 @@
                         <div class="fw-bold"><?= ($i + 1) . '. ' . $row['nama_sesi']; ?></div>
                         <!-- <div class="text-muted small"><= $row['nama_mata_pelajaran']; ?> &bull; <= $row['jenis_pengerjaan']; ?></div> -->
                         <div class="text-muted small"><?= $row['nama_mata_pelajaran']; ?> &bull;
-                            <?= $row['label_pengerjaan'] ?? $row['jenis_pengerjaan']; ?></div>
+                            <?= $row['label_pengerjaan'] ?? $row['jenis_pengerjaan']; ?>
+                        </div>
                     </div>
                     <span class="badge badge-soft rounded-pill"><?= $row['durasi_timer']; ?> menit</span>
                 </div>
@@ -73,7 +75,8 @@
                             <?= $row['jam_selesai']; ?></b></div>
                     <div>Jumlah Soal: <b><?= $row['jumlah_soal']; ?></b></div>
                 </div>
-                <a href="<?= base_url('sesi/konfirmasi/' . $row['id']) ?>" class="btn btn-primary btn-touch w-100">Mulai Kerjakan</a>
+                <a href="<?= base_url('sesi/konfirmasi/' . $row['id']) ?>" class="btn btn-primary btn-touch w-100">Mulai
+                    Kerjakan</a>
             </div>
         <?php endforeach; ?>
     </div>
@@ -95,7 +98,8 @@
                 <div class="fw-bold"><?= ($i + 1) . '. ' . $row['nama_sesi']; ?></div>
                 <!-- <div class="small text-muted mb-2"><= $row['nama_mata_pelajaran']; ?> - <= $row['jenis_pengerjaan']; ?></div> -->
                 <div class="small text-muted mb-2"><?= $row['nama_mata_pelajaran']; ?> &bull;
-                    <?= $row['label_pengerjaan'] ?? $row['jenis_pengerjaan']; ?></div>
+                    <?= $row['label_pengerjaan'] ?? $row['jenis_pengerjaan']; ?>
+                </div>
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <div class="small">Nilai: <b><?= round($row['nilai_akhir']); ?>%</b></div>

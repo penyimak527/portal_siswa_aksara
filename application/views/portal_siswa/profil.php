@@ -4,10 +4,14 @@
     <div class="card-body">
         <h5 class="fw-bold mb-3">Profil Siswa</h5>
         <div class="row g-2 small">
-            <div class="col-5 text-muted">Nama Siswa</div><div class="col-7 fw-bold"><?= $siswa['nama_siswa'] ?? '-'; ?></div>
-            <div class="col-5 text-muted">NIS</div><div class="col-7 fw-bold"><?= $siswa['nis'] ?? '-'; ?></div>
-            <div class="col-5 text-muted">Kelas</div><div class="col-7 fw-bold"><?= $siswa['nama_kelas'] ?? '-'; ?></div>
-            <div class="col-5 text-muted">Tahun Ajaran</div><div class="col-7 fw-bold"><?= $tahun_ajaran; ?></div>
+            <div class="col-5 text-muted">Nama Siswa</div>
+            <div class="col-7 fw-bold"><?= $siswa['nama_siswa'] ?? '-'; ?></div>
+            <div class="col-5 text-muted">NIS</div>
+            <div class="col-7 fw-bold"><?= $siswa['nis'] ?? '-'; ?></div>
+            <div class="col-5 text-muted">Kelas</div>
+            <div class="col-7 fw-bold"><?= $siswa['nama_kelas'] ?? '-'; ?></div>
+            <div class="col-5 text-muted">Tahun Ajaran</div>
+            <div class="col-7 fw-bold"><?= $tahun_ajaran; ?></div>
         </div>
     </div>
 </div>
@@ -18,15 +22,18 @@
         <form id="form-password">
             <div class="mb-3">
                 <label class="form-label fw-semibold">Password Lama</label>
-                <input type="password" name="password_lama" class="form-control rounded-3" placeholder="Masukkan password lama ..." required>
+                <input type="password" name="password_lama" class="form-control rounded-3"
+                    placeholder="Masukkan password lama ..." required>
             </div>
             <div class="mb-3">
                 <label class="form-label fw-semibold">Password Baru</label>
-                <input type="password" name="password_baru" class="form-control rounded-3" placeholder="Masukkan password baru ..." required>
+                <input type="password" name="password_baru" class="form-control rounded-3"
+                    placeholder="Masukkan password baru ..." required>
             </div>
             <div class="mb-3">
                 <label class="form-label fw-semibold">Konfirmasi Password Baru</label>
-                <input type="password" name="konfirmasi_password" class="form-control rounded-3" placeholder="Ulangi password baru ..." required>
+                <input type="password" name="konfirmasi_password" class="form-control rounded-3"
+                    placeholder="Ulangi password baru ..." required>
             </div>
             <button type="submit" id="btn-password" class="btn btn-primary btn-touch w-100">Simpan Password</button>
         </form>
