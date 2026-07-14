@@ -84,6 +84,10 @@
         padding: 18px;
         box-shadow: 0 12px 30px rgba(15, 23, 42, .10);
     }
+
+    .swal2-container {
+        z-index: 100000 !important;
+    }
 </style>
 <div id="examFullscreenShell">
     <div class="exam-loading" id="examLoading">Memuat halaman pengerjaan...</div>
@@ -94,6 +98,15 @@ const AKSARA_EXAM_KEY = 'aksara_exam_started_<?= (int) $sesi['id']; ?>';
 const AKSARA_EXAM_URL_KEY = AKSARA_EXAM_KEY + '_url';
 const AKSARA_EXAM_URL = "<?= base_url('pengerjaan/mulai/' . $sesi['id']) ?>";
 let examFrameLoadBound = false;
+let backGuardAktif = false;
+let lewatiBeforeUnloadParent = false;
+let sedangSelesaiPengerjaan = false;
+let parentSedangReload = false;
+let parentKeluarUrl = sessionStorage.getItem(AKSARA_EXAM_KEY + '_keluar_url') || '';
+let parentKeluarLock = false;
+let parentKeluarSudahDicatat = false;
+let parentPendingAlert = null;
+const AKSARA_LEAVE_ALERT_SESI_KEY = 'aksara_leave_alert_sesi_<?= (int) $sesi['id']; ?>';
 
 $(document).ready(function () {
     restorePengerjaanSetelahRefresh();
@@ -207,6 +220,7 @@ async function mulaiPengerjaanFullscreen() {
 
     sessionStorage.setItem(AKSARA_EXAM_KEY, '1');
     sessionStorage.setItem(AKSARA_EXAM_URL_KEY, AKSARA_EXAM_URL);
+    aktifkanGuardBackPengerjaan();
 
     await requestFullscreenAksara();
     bindExamFrameLoad();
@@ -218,6 +232,7 @@ function restorePengerjaanSetelahRefresh() {
     let examUrl = sessionStorage.getItem(AKSARA_EXAM_URL_KEY);
 
     if (examStarted === '1' && examUrl) {
+        aktifkanGuardBackPengerjaan();
         $('#examFullscreenShell').addClass('active');
         $('#examLoading').html(`
             <div class="exam-loading-card">
@@ -231,22 +246,240 @@ function restorePengerjaanSetelahRefresh() {
     }
 }
 
+
+function aktifkanGuardBackPengerjaan() {
+    if (backGuardAktif) {
+        return;
+    }
+
+    backGuardAktif = true;
+    history.pushState({ aksara_exam: true }, '', window.location.href);
+}
+
+function konfirmasiReloadPengerjaan() {
+    Swal.fire({
+        title: 'Muat Ulang Halaman?',
+        text: 'Jawaban yang sudah tersimpan tetap ada dan jumlah keluar halaman tidak akan bertambah.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Reload',
+        cancelButtonText: 'Batal',
+        reverseButtons: true,
+        allowOutsideClick: false
+    }).then((result) => {
+        if (result.isConfirmed) {
+            parentSedangReload = true;
+            lewatiBeforeUnloadParent = true;
+            window.location.reload();
+        }
+    });
+}
+
+function kirimPesanKeFrame(type) {
+    let frame = document.getElementById('examFrame');
+
+    if (frame && frame.contentWindow) {
+        frame.contentWindow.postMessage({ type: type }, window.location.origin);
+    }
+}
+
+function tampilkanPeringatanKeluarParent(data) {
+    if (!data || !data.keluar_halaman) {
+        return;
+    }
+
+    if (data.keluar_halaman == 1) {
+        Swal.fire('Peringatan 1', 'Anda terdeteksi meninggalkan halaman pengerjaan. Jika keluar halaman sebanyak 3 kali, seluruh jawaban akan dihapus.', 'warning');
+    } else if (data.keluar_halaman == 2) {
+        Swal.fire('Peringatan Terakhir', 'Anda sudah 2 kali meninggalkan halaman pengerjaan. Jika keluar sekali lagi, seluruh jawaban akan dihapus dan timer tetap berjalan.', 'warning');
+    } else if (data.keluar_halaman >= 3) {
+        kirimPesanKeFrame('AKSARA_EXAM_RESET_JAWABAN');
+        Swal.fire('Jawaban Dihapus', 'Jawaban Anda telah dihapus karena meninggalkan halaman pengerjaan sebanyak 3 kali. Timer tetap berjalan.', 'error');
+    }
+}
+
+function simpanPeringatanKeluarParent(data) {
+    if (!data || !data.keluar_halaman) {
+        return;
+    }
+
+    parentPendingAlert = data;
+    sessionStorage.setItem(AKSARA_LEAVE_ALERT_SESI_KEY, JSON.stringify(data));
+}
+
+function tampilkanPeringatanKeluarTersimpanParent() {
+    let dataAlert = parentPendingAlert ? JSON.stringify(parentPendingAlert) : sessionStorage.getItem(AKSARA_LEAVE_ALERT_SESI_KEY);
+
+    if (!dataAlert) {
+        return;
+    }
+
+    parentPendingAlert = null;
+    sessionStorage.removeItem(AKSARA_LEAVE_ALERT_SESI_KEY);
+
+    try {
+        tampilkanPeringatanKeluarParent(JSON.parse(dataAlert));
+    } catch (e) {
+        console.log('Data peringatan keluar tidak valid:', e);
+    }
+}
+
+function catatKeluarHalamanParent(callback, simpanAlert = true) {
+    if (parentKeluarLock || parentKeluarSudahDicatat || !parentKeluarUrl) {
+        if (typeof callback === 'function') {
+            callback();
+        }
+        return;
+    }
+
+    parentKeluarLock = true;
+    parentKeluarSudahDicatat = true;
+
+    $.ajax({
+        url: parentKeluarUrl,
+        type: 'POST',
+        dataType: 'JSON',
+        success: function (data) {
+            if (simpanAlert || document.hidden) {
+                simpanPeringatanKeluarParent(data);
+                if (!document.hidden) {
+                    tampilkanPeringatanKeluarTersimpanParent();
+                }
+            } else {
+                tampilkanPeringatanKeluarParent(data);
+            }
+        },
+        complete: function () {
+            parentKeluarLock = false;
+
+            if (typeof callback === 'function') {
+                callback();
+            }
+        }
+    });
+}
+
+$(document).on('keydown', function (event) {
+    let key = event.key ? event.key.toLowerCase() : '';
+    let isReloadKey = key === 'f5' || ((event.ctrlKey || event.metaKey) && key === 'r');
+
+    if (!isReloadKey) {
+        return;
+    }
+
+    if (sessionStorage.getItem(AKSARA_EXAM_KEY) !== '1') {
+        return;
+    }
+
+    event.preventDefault();
+    konfirmasiReloadPengerjaan();
+});
+
+window.addEventListener('popstate', function () {
+    let examStarted = sessionStorage.getItem(AKSARA_EXAM_KEY);
+
+    if (sedangSelesaiPengerjaan || examStarted !== '1') {
+        return;
+    }
+
+    history.pushState({ aksara_exam: true }, '', window.location.href);
+
+    Swal.fire({
+        title: 'Keluar dari Pengerjaan?',
+        text: 'Jika keluar, sistem akan mencatat aktivitas keluar halaman. Jawaban tetap ada jika belum mencapai 3 kali keluar halaman.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Keluar',
+        cancelButtonText: 'Tetap Mengerjakan',
+        reverseButtons: true,
+        allowOutsideClick: false
+    }).then((result) => {
+        if (result.isConfirmed) {
+            catatKeluarHalamanParent(function () {
+                lewatiBeforeUnloadParent = true;
+                sessionStorage.removeItem(AKSARA_EXAM_KEY);
+                sessionStorage.removeItem(AKSARA_EXAM_URL_KEY);
+                sessionStorage.removeItem(AKSARA_EXAM_KEY + '_keluar_url');
+                window.location.href = "<?= base_url('sesi') ?>";
+            }, true);
+        }
+    });
+});
+
+window.addEventListener('visibilitychange', function () {
+    if (sessionStorage.getItem(AKSARA_EXAM_KEY) !== '1' || sedangSelesaiPengerjaan) {
+        return;
+    }
+
+    if (document.hidden) {
+        if (parentSedangReload) {
+            return;
+        }
+
+        catatKeluarHalamanParent(function () {}, true);
+        return;
+    }
+
+    parentSedangReload = false;
+    parentKeluarSudahDicatat = false;
+    tampilkanPeringatanKeluarTersimpanParent();
+});
+
 window.addEventListener('message', function (event) {
     if (event.origin !== window.location.origin) {
         return;
     }
 
-    if (!event.data || event.data.type !== 'AKSARA_EXAM_FINISHED') {
+    if (!event.data || !event.data.type) {
         return;
     }
 
-    sessionStorage.removeItem(AKSARA_EXAM_KEY);
-    sessionStorage.removeItem(AKSARA_EXAM_URL_KEY);
+    if (event.data.type === 'AKSARA_EXAM_READY') {
+        parentKeluarUrl = event.data.keluar_url || '';
+        if (parentKeluarUrl) {
+            sessionStorage.setItem(AKSARA_EXAM_KEY + '_keluar_url', parentKeluarUrl);
+        }
+        tampilkanPeringatanKeluarTersimpanParent();
+        return;
+    }
 
-    let redirectUrl = event.data.redirect || "<?= base_url('riwayat') ?>";
+    if (event.data.type === 'AKSARA_EXAM_BACK_KELUAR_DONE') {
+        lewatiBeforeUnloadParent = true;
 
-    exitFullscreenAksara(function () {
+        sessionStorage.removeItem(AKSARA_EXAM_KEY);
+        sessionStorage.removeItem(AKSARA_EXAM_URL_KEY);
+
+        let redirectUrl = event.data.redirect || "<?= base_url('sesi') ?>";
         window.location.href = redirectUrl;
-    });
+        return;
+    }
+
+    if (event.data.type === 'AKSARA_EXAM_FINISHED') {
+        sedangSelesaiPengerjaan = true;
+        lewatiBeforeUnloadParent = true;
+
+        sessionStorage.removeItem(AKSARA_EXAM_KEY);
+        sessionStorage.removeItem(AKSARA_EXAM_URL_KEY);
+
+        let redirectUrl = event.data.redirect || "<?= base_url('riwayat') ?>";
+
+        exitFullscreenAksara(function () {
+            window.location.href = redirectUrl;
+        });
+        return;
+    }
+});
+
+window.addEventListener('beforeunload', function (event) {
+    let examStarted = sessionStorage.getItem(AKSARA_EXAM_KEY);
+
+    if (sedangSelesaiPengerjaan || lewatiBeforeUnloadParent || examStarted !== '1') {
+        return;
+    }
+
+    parentSedangReload = true;
+    event.preventDefault();
+    event.returnValue = '';
+    return '';
 });
 </script>

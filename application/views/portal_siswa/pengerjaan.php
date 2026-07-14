@@ -291,7 +291,12 @@
         let intervalTimer;
         let sedangSubmit = false;
         let lockKeluar = false;
+        let sedangReload = false;
+        let keluarSudahDicatat = false;
         const AKSARA_LAST_QUESTION_KEY = 'aksara_last_question_<?= (int) $pengerjaan['id']; ?>';
+        const AKSARA_LEAVE_ALERT_KEY = 'aksara_leave_alert_<?= (int) $pengerjaan['id']; ?>';
+        const AKSARA_LEAVE_ALERT_SESI_KEY = 'aksara_leave_alert_sesi_<?= (int) $pengerjaan['id_sesi_soal']; ?>';
+        const AKSARA_KELUAR_URL = '<?= base_url('pengerjaan/keluar_halaman/' . $pengerjaan['id']) ?>';
 
         $(document).ready(function () {
             jalanTimer();
@@ -305,6 +310,9 @@
                     bukaSoal(indexRestore, false);
                 }
             }
+
+            tampilkanPeringatanKeluarTersimpan();
+            beriTahuParentPengerjaanSiap();
         });
 
         $(document).on('change', 'input[type="radio"], input[type="checkbox"]', function () {
@@ -368,6 +376,16 @@
             });
         }
 
+        function beriTahuParentPengerjaanSiap() {
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'AKSARA_EXAM_READY',
+                    id_pengerjaan: <?= (int) $pengerjaan['id']; ?>,
+                    keluar_url: AKSARA_KELUAR_URL
+                }, window.location.origin);
+            }
+        }
+
         function jalanTimer() {
             intervalTimer = setInterval(function () {
                 let sekarang = new Date().getTime();
@@ -378,15 +396,7 @@
                     clearInterval(intervalTimer);
                     $('#timer').text('00:00:00');
                     $('#status_pengerjaan').val('Waktu Habis');
-                    // Swal.fire({
-                    //     title: 'Waktu Habis',
-                    //     text: 'Jawaban Anda otomatis dikumpulkan oleh sistem.',
-                    //     icon: 'warning',
-                    //     confirmButtonText: 'Lihat Hasil',
-                    //     allowOutsideClick: false
-                    // }).then(() => {
                         kumpulkanJawaban('Waktu Habis');
-                    // });
                     return;
                 }
 
@@ -432,12 +442,9 @@ function konfirmasiKeluarPengerjaan(urlTujuan) {
     }).then((result) => {
         if (result.isConfirmed) {
             sedangSubmit = true;
-
-            if (navigator.sendBeacon) {
-                navigator.sendBeacon('<?= base_url('pengerjaan/keluar_halaman/' . $pengerjaan['id']) ?>');
-            }
-
-            window.location.href = urlTujuan;
+            catatKeluarHalamanSekali(function () {
+                window.location.href = urlTujuan;
+            }, true);
         }
     });
 }
@@ -464,16 +471,7 @@ function konfirmasiKeluarPengerjaan(urlTujuan) {
         }
     });
 },
-                // beforeSend: function () {
-                //     Swal.fire({
-                //         title: 'Menyimpan jawaban...',
-                //         text: 'Mohon tunggu sebentar.',
-                //         allowOutsideClick: false,
-                //         didOpen: () => {
-                //             Swal.showLoading();
-                //         }
-                //     });
-                // },
+
                 success: function (res) {
                   if (res.result == 'true') {
     sessionStorage.removeItem(AKSARA_LAST_QUESTION_KEY);
@@ -499,8 +497,10 @@ function konfirmasiKeluarPengerjaan(urlTujuan) {
         }
 
         document.addEventListener('visibilitychange', function () {
-            if (document.hidden && !sedangSubmit) {
-                catatKeluarHalaman();
+            if (!document.hidden) {
+                sedangReload = false;
+                keluarSudahDicatat = false;
+                tampilkanPeringatanKeluarTersimpan();
             }
         });
 
@@ -509,45 +509,177 @@ window.addEventListener('beforeunload', function (event) {
         return;
     }
 
-    /*
-     * Untuk refresh / close tab browser, SweetAlert tidak bisa dipakai.
-     * Browser hanya mengizinkan alert bawaan beforeunload.
-     */
-    event.preventDefault();
-    event.returnValue = '';
+    sedangReload = true;
 
-    return '';
+    if (window.parent === window) {
+        event.preventDefault();
+        event.returnValue = '';
+        return '';
+    }
 });
-window.addEventListener('pagehide', function () {
-    if (!sedangSubmit && navigator.sendBeacon) {
-        navigator.sendBeacon('<?= base_url('pengerjaan/keluar_halaman/' . $pengerjaan['id']) ?>');
+// pagehide/sendBeacon sengaja tidak dipakai supaya reload tidak menambah keluar_halaman.
+// Aturan pindah tab tetap memakai visibilitychange dan catatKeluarHalaman().
+
+function tampilkanPeringatanKeluarData(data) {
+    if (!data || !data.keluar_halaman) {
+        return;
+    }
+
+    if (data.keluar_halaman == 1) {
+        Swal.fire('Peringatan 1', 'Anda terdeteksi meninggalkan halaman pengerjaan. Jika keluar halaman sebanyak 3 kali, seluruh jawaban akan dihapus.', 'warning');
+    } else if (data.keluar_halaman == 2) {
+        Swal.fire('Peringatan Terakhir', 'Anda sudah 2 kali meninggalkan halaman pengerjaan. Jika keluar sekali lagi, seluruh jawaban akan dihapus.', 'warning');
+    } else if (data.keluar_halaman >= 3) {
+        $('input').prop('checked', false);
+        updateOptionActive();
+        tandaiTerjawab(false);
+        bukaSoal(0);
+        Swal.fire('Jawaban Dihapus', 'Jawaban Anda telah dihapus karena meninggalkan halaman pengerjaan sebanyak 3 kali. Timer tetap berjalan.', 'error');
+    }
+}
+
+function tampilkanPeringatanKeluarTersimpan() {
+    let dataAlert = sessionStorage.getItem(AKSARA_LEAVE_ALERT_KEY)
+        || sessionStorage.getItem(AKSARA_LEAVE_ALERT_SESI_KEY);
+
+    if (!dataAlert) {
+        return;
+    }
+
+    sessionStorage.removeItem(AKSARA_LEAVE_ALERT_KEY);
+    sessionStorage.removeItem(AKSARA_LEAVE_ALERT_SESI_KEY);
+
+    try {
+        tampilkanPeringatanKeluarData(JSON.parse(dataAlert));
+    } catch (e) {
+        console.log('Data peringatan keluar tidak valid:', e);
+    }
+}
+
+$(document).on('keydown', function (event) {
+    let key = event.key ? event.key.toLowerCase() : '';
+    let isReloadKey = key === 'f5' || ((event.ctrlKey || event.metaKey) && key === 'r');
+
+    if (!isReloadKey || sedangSubmit) {
+        return;
+    }
+
+    event.preventDefault();
+
+    Swal.fire({
+        title: 'Muat Ulang Halaman?',
+        text: 'Jawaban yang sudah tersimpan tetap ada dan jumlah keluar halaman tidak akan bertambah.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Reload',
+        cancelButtonText: 'Batal',
+        reverseButtons: true,
+        allowOutsideClick: false
+    }).then((result) => {
+        if (result.isConfirmed) {
+            sedangReload = true;
+            window.location.reload();
+        }
+    });
+});
+
+window.addEventListener('message', function (event) {
+    if (event.origin !== window.location.origin) {
+        return;
+    }
+
+    if (!event.data || !event.data.type) {
+        return;
+    }
+
+    if (event.data.type === 'AKSARA_EXAM_PARENT_HIDDEN') {
+        return;
+    }
+
+    if (event.data.type === 'AKSARA_EXAM_PARENT_VISIBLE') {
+        sedangReload = false;
+        keluarSudahDicatat = false;
+        tampilkanPeringatanKeluarTersimpan();
+        return;
+    }
+
+    if (event.data.type === 'AKSARA_EXAM_BACK_KELUAR') {
+        catatKeluarHalamanKarenaBack();
+        return;
+    }
+
+    if (event.data.type === 'AKSARA_EXAM_RESET_JAWABAN') {
+        $('input').prop('checked', false);
+        updateOptionActive();
+        tandaiTerjawab(false);
+        bukaSoal(0);
     }
 });
 
-        function catatKeluarHalaman() {
-            if (lockKeluar) return;
-            lockKeluar = true;
-            setTimeout(() => lockKeluar = false, 1500);
+function catatKeluarHalamanKarenaBack() {
+    if (sedangSubmit) {
+        return;
+    }
 
-            $.ajax({
-                url: '<?= base_url('pengerjaan/keluar_halaman/' . $pengerjaan['id']) ?>',
-                type: 'POST',
-                dataType: 'JSON',
-                success: function (data) {
-                    if (data.keluar_halaman == 1) {
-                        Swal.fire('Peringatan 1', 'Anda terdeteksi meninggalkan halaman pengerjaan. Jika keluar halaman sebanyak 3 kali, seluruh jawaban akan dihapus.', 'warning');
-                    } else if (data.keluar_halaman == 2) {
-                        Swal.fire('Peringatan Terakhir', 'Anda sudah 2 kali meninggalkan halaman pengerjaan. Jika keluar sekali lagi, seluruh jawaban akan dihapus.', 'warning');
-                    } else if (data.keluar_halaman >= 3) {
-                        $('input').prop('checked', false);
-                        updateOptionActive();
-                        tandaiTerjawab(false);
-                        bukaSoal(0);
-                        Swal.fire('Jawaban Dihapus', 'Jawaban Anda telah dihapus karena meninggalkan halaman pengerjaan sebanyak 3 kali. Timer tetap berjalan.', 'error');
-                    }
-                }
-            });
+    sedangSubmit = true;
+    sedangReload = true;
+
+    catatKeluarHalamanSekali(function () {
+        sessionStorage.removeItem(AKSARA_LAST_QUESTION_KEY);
+
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage({
+                type: 'AKSARA_EXAM_BACK_KELUAR_DONE',
+                redirect: '<?= base_url('sesi') ?>'
+            }, window.location.origin);
+        } else {
+            window.location.href = '<?= base_url('sesi') ?>';
         }
+    }, true);
+}
+
+
+        function catatKeluarHalaman(simpanAlert = false) {
+            if (lockKeluar || keluarSudahDicatat) return;
+            lockKeluar = true;
+            keluarSudahDicatat = true;
+
+            catatKeluarHalamanSekali(function () {}, simpanAlert);
+        }
+
+function simpanResponseKeluarHalaman(data) {
+    if (!data || !data.keluar_halaman) {
+        return;
+    }
+
+    let payload = JSON.stringify(data);
+    sessionStorage.setItem(AKSARA_LEAVE_ALERT_KEY, payload);
+    sessionStorage.setItem(AKSARA_LEAVE_ALERT_SESI_KEY, payload);
+}
+
+function catatKeluarHalamanSekali(callback, simpanAlert) {
+    $.ajax({
+        url: '<?= base_url('pengerjaan/keluar_halaman/' . $pengerjaan['id']) ?>',
+        type: 'POST',
+        dataType: 'JSON',
+        success: function (data) {
+            if (simpanAlert) {
+                simpanResponseKeluarHalaman(data);
+            } else if (document.hidden) {
+                simpanResponseKeluarHalaman(data);
+            } else {
+                tampilkanPeringatanKeluarData(data);
+            }
+        },
+        complete: function () {
+            lockKeluar = false;
+
+            if (typeof callback === 'function') {
+                callback();
+            }
+        }
+    });
+}
         async function requestFullscreenAksara() {
     let elem = document.documentElement;
 

@@ -4,6 +4,12 @@ if (!function_exists('portal_preview_h')) {
     {
         return htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8');
     }
+    if (!function_exists('portal_preview_text')) {
+    function portal_preview_text($text)
+    {
+        return nl2br(htmlspecialchars((string) $text, ENT_QUOTES, 'UTF-8'));
+    }
+}
 }
 ?>
 
@@ -35,6 +41,16 @@ if (!function_exists('portal_preview_h')) {
     .preview-bs-value b {
         color: #27324a;
     }
+    .preview-pembahasan-box {
+    border: 1px solid #e9ecef;
+    background: #f8fafc;
+    border-radius: 10px;
+    padding: 10px 12px;
+    line-height: 1.6;
+    color: #27324a;
+    font-size: 14px;
+    word-break: break-word;
+}
 </style>
 
 <div class="card student-card mb-3">
@@ -141,8 +157,14 @@ if (!function_exists('portal_preview_h')) {
                     <div class="small">Status:</div>
                     <div class="fw-bold mb-2"><?= $row['status_jawaban']; ?></div>
                     <?php if (!empty($row['pembahasan'])) : ?>
-                        <div class="alert alert-light border mb-0"><b>Pembahasan:</b><br><?= $row['pembahasan']; ?></div>
-                    <?php endif; ?>
+    <div class="mt-3">
+        <div class="small text-muted mb-1">Pembahasan:</div>
+        <div class="preview-pembahasan-box">
+            <?= portal_preview_text($row['pembahasan']); ?>
+        </div>
+    </div>
+<?php endif; ?>
+
                 </div>
             <?php endforeach; ?>
         </div>
