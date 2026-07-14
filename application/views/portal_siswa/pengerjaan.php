@@ -10,6 +10,11 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
+        html,
+        body {
+            overscroll-behavior-y: none;
+        }
+
         .portal-exam-page {
             --aksara-yellow: #f2ad0d;
             --aksara-yellow-dark: #c98600;
@@ -293,6 +298,8 @@
         let lockKeluar = false;
         let sedangReload = false;
         let keluarSudahDicatat = false;
+        let touchAwalY = 0;
+        let alertReloadAktif = false;
         const AKSARA_LAST_QUESTION_KEY = 'aksara_last_question_<?= (int) $pengerjaan['id']; ?>';
         const AKSARA_LEAVE_ALERT_KEY = 'aksara_leave_alert_<?= (int) $pengerjaan['id']; ?>';
         const AKSARA_LEAVE_ALERT_SESI_KEY = 'aksara_leave_alert_sesi_<?= (int) $pengerjaan['id_sesi_soal']; ?>';
@@ -431,21 +438,11 @@ function konfirmasiKeluarPengerjaan(urlTujuan) {
     }
 
     Swal.fire({
-        title: 'Keluar dari Pengerjaan?',
-        text: 'Jika keluar dari halaman pengerjaan, sistem akan mencatat aktivitas keluar halaman.',
+        title: 'Tidak Bisa Kembali Saat Pengerjaan',
+        text: 'Anda sedang mengerjakan soal. Halaman tidak dapat kembali ke sebelumnya selama pengerjaan berlangsung.',
         icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Keluar',
-        cancelButtonText: 'Tetap Mengerjakan',
-        reverseButtons: true,
+        confirmButtonText: 'Ya',
         allowOutsideClick: false
-    }).then((result) => {
-        if (result.isConfirmed) {
-            sedangSubmit = true;
-            catatKeluarHalamanSekali(function () {
-                window.location.href = urlTujuan;
-            }, true);
-        }
     });
 }
         function kumpulkanJawaban(status) {
@@ -565,23 +562,48 @@ $(document).on('keydown', function (event) {
     }
 
     event.preventDefault();
+    tampilkanAlertTidakBisaReload();
+});
+
+function tampilkanAlertTidakBisaReload() {
+    if (alertReloadAktif || sedangSubmit) {
+        return;
+    }
+
+    alertReloadAktif = true;
 
     Swal.fire({
-        title: 'Muat Ulang Halaman?',
-        text: 'Jawaban yang sudah tersimpan tetap ada dan jumlah keluar halaman tidak akan bertambah.',
+        title: 'Tidak Bisa Reload Saat Pengerjaan',
+        text: 'Anda sedang mengerjakan soal. Halaman tidak dapat direload selama pengerjaan berlangsung.',
         icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Reload',
-        cancelButtonText: 'Batal',
-        reverseButtons: true,
+        confirmButtonText: 'Ya',
         allowOutsideClick: false
-    }).then((result) => {
-        if (result.isConfirmed) {
-            sedangReload = true;
-            window.location.reload();
-        }
+    }).then(() => {
+        alertReloadAktif = false;
     });
-});
+}
+
+document.addEventListener('touchstart', function (event) {
+    if (event.touches.length !== 1) {
+        return;
+    }
+
+    touchAwalY = event.touches[0].clientY;
+}, { passive: true });
+
+document.addEventListener('touchmove', function (event) {
+    if (event.touches.length !== 1 || sedangSubmit) {
+        return;
+    }
+
+    let posisiScrollAtas = window.scrollY <= 0 || document.documentElement.scrollTop <= 0;
+    let tarikKeBawah = event.touches[0].clientY - touchAwalY;
+
+    if (posisiScrollAtas && tarikKeBawah > 24) {
+        event.preventDefault();
+        tampilkanAlertTidakBisaReload();
+    }
+}, { passive: false });
 
 window.addEventListener('message', function (event) {
     if (event.origin !== window.location.origin) {

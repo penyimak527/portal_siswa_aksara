@@ -43,6 +43,11 @@
     </div>
 </div>
 <style>
+    html,
+    body {
+        overscroll-behavior-y: none;
+    }
+
     #examFullscreenShell {
         display: none;
         position: fixed;
@@ -106,6 +111,8 @@ let parentKeluarUrl = sessionStorage.getItem(AKSARA_EXAM_KEY + '_keluar_url') ||
 let parentKeluarLock = false;
 let parentKeluarSudahDicatat = false;
 let parentPendingAlert = null;
+let touchAwalY = 0;
+let alertReloadAktif = false;
 const AKSARA_LEAVE_ALERT_SESI_KEY = 'aksara_leave_alert_sesi_<?= (int) $sesi['id']; ?>';
 
 $(document).ready(function () {
@@ -257,21 +264,20 @@ function aktifkanGuardBackPengerjaan() {
 }
 
 function konfirmasiReloadPengerjaan() {
+    if (alertReloadAktif) {
+        return;
+    }
+
+    alertReloadAktif = true;
+
     Swal.fire({
-        title: 'Muat Ulang Halaman?',
-        text: 'Jawaban yang sudah tersimpan tetap ada dan jumlah keluar halaman tidak akan bertambah.',
+        title: 'Tidak Bisa Reload Saat Pengerjaan',
+        text: 'Anda sedang mengerjakan soal. Halaman tidak dapat direload selama pengerjaan berlangsung.',
         icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Reload',
-        cancelButtonText: 'Batal',
-        reverseButtons: true,
+        confirmButtonText: 'Ya',
         allowOutsideClick: false
-    }).then((result) => {
-        if (result.isConfirmed) {
-            parentSedangReload = true;
-            lewatiBeforeUnloadParent = true;
-            window.location.reload();
-        }
+    }).then(() => {
+        alertReloadAktif = false;
     });
 }
 
@@ -375,6 +381,28 @@ $(document).on('keydown', function (event) {
     konfirmasiReloadPengerjaan();
 });
 
+document.addEventListener('touchstart', function (event) {
+    if (sessionStorage.getItem(AKSARA_EXAM_KEY) !== '1' || event.touches.length !== 1) {
+        return;
+    }
+
+    touchAwalY = event.touches[0].clientY;
+}, { passive: true });
+
+document.addEventListener('touchmove', function (event) {
+    if (sessionStorage.getItem(AKSARA_EXAM_KEY) !== '1' || event.touches.length !== 1) {
+        return;
+    }
+
+    let posisiScrollAtas = window.scrollY <= 0 || document.documentElement.scrollTop <= 0;
+    let tarikKeBawah = event.touches[0].clientY - touchAwalY;
+
+    if (posisiScrollAtas && tarikKeBawah > 24) {
+        event.preventDefault();
+        konfirmasiReloadPengerjaan();
+    }
+}, { passive: false });
+
 window.addEventListener('popstate', function () {
     let examStarted = sessionStorage.getItem(AKSARA_EXAM_KEY);
 
@@ -385,24 +413,11 @@ window.addEventListener('popstate', function () {
     history.pushState({ aksara_exam: true }, '', window.location.href);
 
     Swal.fire({
-        title: 'Keluar dari Pengerjaan?',
-        text: 'Jika keluar, sistem akan mencatat aktivitas keluar halaman. Jawaban tetap ada jika belum mencapai 3 kali keluar halaman.',
+        title: 'Tidak Bisa Kembali Saat Pengerjaan',
+        text: 'Anda sedang mengerjakan soal. Halaman tidak dapat kembali ke sebelumnya selama pengerjaan berlangsung.',
         icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Keluar',
-        cancelButtonText: 'Tetap Mengerjakan',
-        reverseButtons: true,
+        confirmButtonText: 'Ya',
         allowOutsideClick: false
-    }).then((result) => {
-        if (result.isConfirmed) {
-            catatKeluarHalamanParent(function () {
-                lewatiBeforeUnloadParent = true;
-                sessionStorage.removeItem(AKSARA_EXAM_KEY);
-                sessionStorage.removeItem(AKSARA_EXAM_URL_KEY);
-                sessionStorage.removeItem(AKSARA_EXAM_KEY + '_keluar_url');
-                window.location.href = "<?= base_url('sesi') ?>";
-            }, true);
-        }
     });
 });
 
