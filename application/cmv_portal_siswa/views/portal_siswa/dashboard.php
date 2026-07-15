@@ -19,28 +19,28 @@
         <h5 class="fw-bold mb-3">Ringkasan</h5>
         <div class="row g-2">
             <!-- <div class="col-6"> -->
-                <div class="col-12 col-md-6 ">
+                <div class="col-12 col-md-6 col-lg">
                 <div class="p-3 rounded-3 bg-light h-100">
                     <div class="info-label">Sesi Tersedia</div>
                     <div class="info-value fs-4"><?= $ringkasan['sesi_tersedia']; ?></div>
                 </div>
             </div>
             <!-- <div class="col-6"> -->
-                <div class="col-12 col-md-6 ">
+                <div class="col-12 col-md-6 col-lg">
                 <div class="p-3 rounded-3 bg-light h-100">
                     <div class="info-label">Sesi Selesai</div>
                     <div class="info-value fs-4"><?= $ringkasan['sesi_selesai']; ?></div>
                 </div>
             </div>
             <!-- <div class="col-6"> -->
-                <div class="col-12 col-md-6 ">
+                <div class="col-12 col-md-6 col-lg">
                 <div class="p-3 rounded-3 bg-light h-100">
                     <div class="info-label">Rata-rata Nilai</div>
                     <div class="info-value fs-4"><?= $ringkasan['rata_nilai']; ?>%</div>
                 </div>
             </div>
             
-                <div class="col-12 col-md-6 ">
+                <div class="col-12 col-md-6 col-lg">
                 <div class="p-3 rounded-3 bg-light h-100 materi-summary-card" onclick="bukaMateriDashboard('lemah')">
                     <div class="info-label">Materi Lemah</div>
                     <div class="info-value fs-4"><?= $ringkasan['materi_lemah']; ?></div>
@@ -48,7 +48,7 @@
                 </div>
             </div>
             <!-- <div class="col-6"> -->
-                <div class="col-12 col-md-6 ">
+                <div class="col-12 col-6 col-lg">
                 <div class="p-3 rounded-3 bg-light h-100 materi-summary-card" onclick="bukaMateriDashboard('dikuasai')">
                     <div class="info-label">Materi Dikuasai</div>
                     <div class="info-value fs-4"><?= $ringkasan['materi_dikuasai'] ?? 0; ?></div>
