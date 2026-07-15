@@ -1299,6 +1299,5 @@ class M_portal_siswa extends CI_Model
             'message' => 'Password berhasil diperbarui.'
         ];
     }
-    
 }
 ?>
