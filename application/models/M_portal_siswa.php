@@ -383,8 +383,63 @@ class M_portal_siswa extends CI_Model
         $attempt = $this->status_attempt_sesi($id_sesi);
         return !$attempt['boleh'];
     }
+    private function materi_dashboard_rows($id_mata_pelajaran = '')
+    {
+        $id_siswa = $this->current_id_siswa();
 
-    public function ringkasan_dashboard()
+        $where = [
+            "ps.id_siswa = ?",
+            "ps.status_pengerjaan IN ('Selesai','Waktu Habis')",
+            "m.id IS NOT NULL"
+        ];
+        $params = [$id_siswa];
+
+        if ($id_mata_pelajaran !== '' && $id_mata_pelajaran !== null) {
+            $where[] = "ss.id_mata_pelajaran = ?";
+            $params[] = $id_mata_pelajaran;
+        }
+
+        $sql = "SELECT
+                    m.id AS id_materi,
+                    m.nama_materi,
+                    ss.id_mata_pelajaran,
+                    COALESCE(mp.nama_mata_pelajaran, '-') AS nama_mata_pelajaran,
+                    ROUND((SUM(COALESCE(CAST(js.nilai AS DECIMAL(10,2)), 0)) /
+                        NULLIF(SUM(COALESCE(CAST(so.bobot_nilai AS DECIMAL(10,2)), 0)), 0)) * 100, 0) AS persen,
+                    ROUND(SUM(COALESCE(CAST(js.nilai AS DECIMAL(10,2)), 0)), 2) AS nilai,
+                    ROUND(SUM(COALESCE(CAST(so.bobot_nilai AS DECIMAL(10,2)), 0)), 2) AS bobot
+                FROM (
+                    SELECT id_pengerjaan, id_soal, nilai
+                    FROM siswa_jawaban_bimbel
+
+                    UNION ALL
+
+                    SELECT id_pengerjaan, id_soal, nilai
+                    FROM siswa_jawaban_rumah
+                ) js
+                INNER JOIN siswa_pengerjaan ps ON ps.id = js.id_pengerjaan
+                INNER JOIN soal_sesi ss ON ss.id = ps.id_sesi_soal
+                INNER JOIN soal so ON so.id = js.id_soal AND so.status_hapus IS NULL
+                LEFT JOIN materi m ON m.id = so.id_materi
+                LEFT JOIN mata_pelajaran mp ON mp.id = ss.id_mata_pelajaran
+                WHERE " . implode(' AND ', $where) . "
+                GROUP BY m.id, m.nama_materi, ss.id_mata_pelajaran, mp.nama_mata_pelajaran
+                ORDER BY persen ASC, m.nama_materi ASC";
+
+        $rows = $this->db->query($sql, $params)->result_array();
+
+        foreach ($rows as &$row) {
+            $persen = (float) ($row['persen'] ?? 0);
+            $persen = max(0, min(100, $persen));
+            $row['persen'] = round($persen, 0);
+            $row['status_materi'] = $persen < 70 ? 'Perlu Ditingkatkan' : 'Dikuasai';
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+     public function ringkasan_dashboard()
     {
         $id_siswa = $this->current_id_siswa();
         $sesi_tersedia = count($this->sesi_tersedia());
@@ -396,38 +451,68 @@ class M_portal_siswa extends CI_Model
             WHERE id_siswa = ?
             AND status_pengerjaan IN ('Selesai','Waktu Habis')", [$id_siswa])->row_array();
 
-        $materi = $this->db->query("SELECT
-                m.nama_materi,
-                ROUND((SUM(CAST(js.nilai AS DECIMAL(10,2))) / NULLIF(SUM(CAST(so.bobot_nilai AS DECIMAL(10,2))), 0)) * 100, 0) AS persen
-            FROM (
-                SELECT id_pengerjaan, id_soal, nilai
-                FROM siswa_jawaban_bimbel
+        $materi = $this->materi_dashboard_rows();
+        $materi_lemah = 0;
+        $materi_dikuasai = 0;
 
-                UNION ALL
-
-                SELECT id_pengerjaan, id_soal, nilai
-                FROM siswa_jawaban_rumah
-            ) js
-            INNER JOIN soal so ON so.id = js.id_soal
-            INNER JOIN materi m ON m.id = so.id_materi
-            INNER JOIN siswa_pengerjaan ps ON ps.id = js.id_pengerjaan
-            WHERE ps.id_siswa = ?
-            AND ps.status_pengerjaan IN ('Selesai','Waktu Habis')
-            GROUP BY m.id, m.nama_materi
-            HAVING persen < 70
-            ORDER BY persen ASC
-            LIMIT 3", [$id_siswa])->result_array();
-
-        $materi_lemah = [];
         foreach ($materi as $m) {
-            $materi_lemah[] = $m['nama_materi'];
+            if ((float) ($m['persen'] ?? 0) < 70) {
+                $materi_lemah++;
+            } else {
+                $materi_dikuasai++;
+            }
         }
 
         return [
             'sesi_tersedia' => $sesi_tersedia,
             'sesi_selesai' => (int) ($row['sesi_selesai'] ?? 0),
             'rata_nilai' => round((float) ($row['rata_nilai'] ?? 0), 0),
-            'materi_lemah' => count($materi_lemah) > 0 ? implode(', ', $materi_lemah) : '-'
+            'materi_lemah' => $materi_lemah,
+            'materi_dikuasai' => $materi_dikuasai
+        ];
+    }
+
+    public function materi_dashboard_result()
+    {
+        $jenis = trim((string) $this->input->post('jenis'));
+        $id_mata_pelajaran = trim((string) $this->input->post('id_mata_pelajaran'));
+
+        if (!in_array($jenis, ['lemah', 'dikuasai'], true)) {
+            return [
+                'result' => 'false',
+                'message' => 'Jenis materi tidak valid.',
+                'data' => []
+            ];
+        }
+
+        $rows = $this->materi_dashboard_rows($id_mata_pelajaran);
+        $data = [];
+
+        foreach ($rows as $row) {
+            $persen = (float) ($row['persen'] ?? 0);
+
+            if ($jenis == 'lemah' && $persen < 70) {
+                $data[] = $row;
+            }
+
+            if ($jenis == 'dikuasai' && $persen >= 70) {
+                $data[] = $row;
+            }
+        }
+
+        if ($jenis == 'dikuasai') {
+            usort($data, function ($a, $b) {
+                if ((float) $a['persen'] == (float) $b['persen']) {
+                    return strcmp($a['nama_materi'], $b['nama_materi']);
+                }
+                return (float) $b['persen'] <=> (float) $a['persen'];
+            });
+        }
+
+        return [
+            'result' => 'true',
+            'message' => count($data) > 0 ? 'Data materi berhasil dimuat.' : 'Tidak ada data materi.',
+            'data' => $data
         ];
     }
 
