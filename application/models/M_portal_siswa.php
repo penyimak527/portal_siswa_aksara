@@ -516,6 +516,7 @@ class M_portal_siswa extends CI_Model
         ];
     }
 
+    
     public function riwayat_terbaru($limit = 5)
     {
         return $this->riwayat_result($limit);
