@@ -160,10 +160,8 @@ class M_portal_siswa extends CI_Model
     public function ada_tunggakan_bulan_lalu($id_siswa = null)
     {
         $id_siswa = $id_siswa ?: $this->current_id_siswa();
-
-        $prev = strtotime('first day of previous month');
-        $bulan = date('m', $prev);
-        $tahun = date('Y', $prev);
+        $bulan = (int) date('m');
+        $tahun = (int) date('Y');
 
         $sql = "SELECT COUNT(*) AS total
                 FROM pembayaran p
@@ -171,11 +169,70 @@ class M_portal_siswa extends CI_Model
                 INNER JOIN siswa s ON s.id = pp.id_siswa
                 WHERE pp.id_siswa = ?
                 AND pp.status_aktif = '1'
-                AND p.periode_bulan = ?
-                AND p.periode_tahun = ?
-                AND COALESCE(p.status, '') <> 'Lunas'";
-        $row = $this->db->query($sql, [$id_siswa, $bulan, $tahun])->row_array();
+                AND COALESCE(p.status, '') <> 'Lunas'
+                AND p.periode_bulan IS NOT NULL
+                AND p.periode_bulan != ''
+                AND p.periode_tahun IS NOT NULL
+                AND p.periode_tahun != ''
+                AND (
+                    CAST(p.periode_tahun AS UNSIGNED) < ?
+                    OR (
+                        CAST(p.periode_tahun AS UNSIGNED) = ?
+                        AND CAST(p.periode_bulan AS UNSIGNED) <= ?
+                    )
+                )";
+        $row = $this->db->query($sql, [$id_siswa, $tahun, $tahun, $bulan])->row_array();
         return ((int) ($row['total'] ?? 0)) > 0;
+    }
+
+    public function cek_akses()
+    {
+        $id_sesi = (int) $this->input->post('id_sesi');
+
+        if ($id_sesi <= 0) {
+            return [
+                'status' => false,
+                'result' => 'false',
+                'ada_tunggakan' => 'false',
+                'message' => 'Sesi soal tidak ditemukan.'
+            ];
+        }
+
+        if ($this->ada_tunggakan_bulan_lalu()) {
+            return [
+                'status' => false,
+                'result' => 'false',
+                'ada_tunggakan' => 'true',
+                'message' => 'Maaf, sesi soal baru belum dapat diakses karena masih terdapat pembayaran yang belum diselesaikan. Silahkan hubungi admin bimbel untuk informasi lebih lanjut.'
+            ];
+        }
+
+        if ($this->siswa_sudah_mengerjakan($id_sesi)) {
+            return [
+                'status' => false,
+                'result' => 'false',
+                'ada_tunggakan' => 'false',
+                'message' => 'Sesi ini sudah dikerjakan maksimal 2 kali.'
+            ];
+        }
+
+        $sesi = $this->sesi_detail($id_sesi);
+        if (!$sesi) {
+            return [
+                'status' => false,
+                'result' => 'false',
+                'ada_tunggakan' => 'false',
+                'message' => 'Sesi soal tidak ditemukan atau belum dapat dikerjakan.'
+            ];
+        }
+
+        return [
+            'status' => true,
+            'result' => 'true',
+            'ada_tunggakan' => 'false',
+            'message' => 'Sesi dapat diakses.',
+            'redirect' => base_url('sesi/konfirmasi/' . $id_sesi)
+        ];
     }
 
     private function filter_sesi_where(&$where, &$params)
@@ -447,7 +504,7 @@ class M_portal_siswa extends CI_Model
         if ($this->ada_tunggakan_bulan_lalu($id_siswa)) {
             return [
                 'status' => false,
-                'message' => 'Akses sesi ditolak karena masih terdapat tunggakan pembayaran bulan sebelumnya.',
+                'message' => 'Maaf, sesi soal baru belum dapat diakses karena masih terdapat pembayaran yang belum diselesaikan. Silakan hubungi admin bimbel untuk menyelesaikan pembayaran.',
                 'locked' => true
             ];
         }

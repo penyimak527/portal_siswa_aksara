@@ -75,8 +75,8 @@
                             <?= $row['jam_selesai']; ?></b></div>
                     <div>Jumlah Soal: <b><?= $row['jumlah_soal']; ?></b></div>
                 </div>
-                <a href="<?= base_url('sesi/konfirmasi/' . $row['id']) ?>" class="btn btn-primary btn-touch w-100">Mulai
-                    Kerjakan</a>
+                <button type="button" class="btn btn-primary btn-touch w-100" onclick="cekAksesSesi('<?= (int) $row['id']; ?>')">Mulai
+                    Kerjakan</button>
             </div>
         <?php endforeach; ?>
     </div>
@@ -112,3 +112,71 @@
         <?php endforeach; ?>
     </div>
 </div>
+
+<script>
+function cekAksesSesi(idSesi) {
+    if (!idSesi) {
+        return;
+    }
+
+    $.ajax({
+        url: '<?= base_url('sesi/cek_akses'); ?>',
+        type: 'POST',
+        dataType: 'JSON',
+        data: {
+            id_sesi: idSesi
+        },
+        beforeSend: function () {
+            Swal.fire({
+                title: 'Memeriksa akses...',
+                text: 'Mohon tunggu sebentar.',
+                allowOutsideClick: false,
+                showConfirmButton: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+        },
+        success: function (res) {
+            Swal.close();
+            if (res.ada_tunggakan == 'true') {
+                Swal.fire({
+        title: 'Akses Sesi Ditolak',
+        html: `
+            <div class="text-center">
+                Maaf, sesi soal baru belum dapat diakses karena masih terdapat<br>
+                pembayaran yang belum diselesaikan.
+                <br><br>
+                Silahkan hubungi admin bimbel untuk informasi lebih lanjut.
+            </div>`,
+        icon: 'warning',
+        confirmButtonText: 'Kembali',
+        allowOutsideClick: false,
+        allowEscapeKey: false
+    });
+                return;
+            }
+
+            if (res.result == 'true') {
+                window.location.href = res.redirect;
+                return;
+            }
+
+            Swal.fire({
+                title: 'Sesi Tidak Dapat Diakses',
+                text: res.message || 'Sesi belum dapat dikerjakan.',
+                icon: 'warning',
+                confirmButtonText: 'Kembali'
+            });
+        },
+        error: function () {
+            Swal.fire({
+                title: 'Gagal',
+                text: 'Terjadi kesalahan saat memeriksa akses sesi.',
+                icon: 'error',
+                confirmButtonText: 'Kembali'
+            });
+        }
+    });
+}
+</script>

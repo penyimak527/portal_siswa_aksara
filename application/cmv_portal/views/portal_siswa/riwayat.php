@@ -2,13 +2,13 @@
     <div class="card-body">
         <div class="row g-2">
             <div class="col-12 col-md-4">
-    <select id="id_kelas" class="form-select rounded-3">
-        <option value="">Pilih Kelas</option>
-        <?php foreach (($kelas ?? []) as $k): ?>
-            <option value="<?= $k['id']; ?>"><?= $k['nama_jenjang']; ?> <?= $k['nama_kelas']; ?></option>
-        <?php endforeach; ?>
-    </select>
-</div>
+                <select id="id_kelas" class="form-select rounded-3">
+                    <option value="">Pilih Kelas</option>
+                    <?php foreach (($kelas ?? []) as $k): ?>
+                        <option value="<?= $k['id']; ?>"><?= $k['nama_jenjang']; ?>     <?= $k['nama_kelas']; ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
             <div class="col-6 col-md-4">
                 <select id="mapel" class="form-select rounded-3">
                     <option value="">Pilih Mata Pelajaran</option>

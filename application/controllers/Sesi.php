@@ -15,16 +15,6 @@ class Sesi extends CI_Controller
         }
     }
 
-    private function json_output($data)
-    {
-        $this->output
-            ->set_status_header(200)
-            ->set_content_type('application/json', 'utf-8')
-            ->set_output(json_encode($data, JSON_PRETTY_PRINT))
-            ->_display();
-        exit;
-    }
-
     public function index()
     {
         $data['title'] = 'Sesi Tersedia';
@@ -40,12 +30,29 @@ class Sesi extends CI_Controller
     public function result()
     {
         $data = $this->model->sesi_tersedia();
-        $this->json_output([
+        $data = array(
             'result' => 'true',
             'data' => $data,
             'ada_tunggakan' => $this->model->ada_tunggakan_bulan_lalu() ? 'true' : 'false',
             'message' => count($data) > 0 ? 'Data sesi berhasil dimuat.' : 'Tidak ada sesi yang bisa dikerjakan.'
-        ]);
+        );
+         $this->output
+            ->set_status_header(200)
+            ->set_content_type('application/json', 'utf-8')
+            ->set_output(json_encode($data, JSON_PRETTY_PRINT))
+            ->_display();
+        exit;
+    }
+
+    public function cek_akses()
+    {
+        $data = $this->model->cek_akses();
+         $this->output
+            ->set_status_header(200)
+            ->set_content_type('application/json', 'utf-8')
+            ->set_output(json_encode($data, JSON_PRETTY_PRINT))
+            ->_display();
+        exit;
     }
 
     public function akses_ditolak()

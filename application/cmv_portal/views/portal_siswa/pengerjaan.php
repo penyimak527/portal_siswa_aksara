@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
     <title>Pengerjaan Soal</title>
@@ -10,6 +11,11 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
+        html,
+        body {
+            overscroll-behavior-y: none;
+        }
+
         .portal-exam-page {
             --aksara-yellow: #f2ad0d;
             --aksara-yellow-dark: #c98600;
@@ -190,12 +196,14 @@
         }
     </style>
 </head>
+
 <body class="portal-exam-page">
     <div class="sticky-exam">
         <div class="student-shell px-3 py-3 d-flex justify-content-between align-items-center">
             <div>
                 <h6 class="fw-bold mb-0"><?= $pengerjaan['nama_sesi']; ?></h6>
-                <small class="text-muted"><?= $pengerjaan['nama_mata_pelajaran']; ?> | <?= $pengerjaan['jenis_pengerjaan']; ?></small>
+                <small class="text-muted"><?= $pengerjaan['nama_mata_pelajaran']; ?> |
+                    <?= $pengerjaan['jenis_pengerjaan']; ?></small>
             </div>
             <div class="badge bg-danger fs-6" id="timer">00:00:00</div>
         </div>
@@ -206,8 +214,9 @@
             <div class="card-body">
                 <h6 class="fw-bold mb-3">Navigasi Soal</h6>
                 <div class="d-flex flex-wrap gap-2" id="navigasi-soal">
-                    <?php foreach ($soal as $index => $s) : ?>
-                        <button type="button" class="question-number <?= $index == 0 ? 'active' : '' ?>" onclick="bukaSoal(<?= $index; ?>)"><?= $index + 1; ?></button>
+                    <?php foreach ($soal as $index => $s): ?>
+                        <button type="button" class="question-number <?= $index == 0 ? 'active' : '' ?>"
+                            onclick="bukaSoal(<?= $index; ?>)"><?= $index + 1; ?></button>
                     <?php endforeach; ?>
                 </div>
                 <div class="small mt-3 text-muted">
@@ -220,13 +229,15 @@
 
         <form id="form-jawaban">
             <input type="hidden" name="status_pengerjaan" id="status_pengerjaan" value="Selesai">
-            <?php foreach ($soal as $index => $s) : ?>
+            <?php foreach ($soal as $index => $s): ?>
                 <?php $jawab = $jawaban_tersimpan[$s['id']] ?? null; ?>
-                <div class="question-panel <?= $index == 0 ? 'active' : '' ?>" data-index="<?= $index; ?>" data-id-soal="<?= $s['id']; ?>">
+                <div class="question-panel <?= $index == 0 ? 'active' : '' ?>" data-index="<?= $index; ?>"
+                    data-id-soal="<?= $s['id']; ?>">
                     <div class="card student-card mb-3">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="badge bg-primary-subtle text-primary">Soal <?= $index + 1; ?> dari <?= count($soal); ?></span>
+                                <span class="badge bg-primary-subtle text-primary">Soal <?= $index + 1; ?> dari
+                                    <?= count($soal); ?></span>
                                 <span class="badge bg-light text-dark border">
                                     <?= $s['tipe_soal'] == 'pg' ? 'Pilihan Ganda' : ($s['tipe_soal'] == 'pg_kompleks' ? 'Pilihan Ganda Kompleks' : 'Benar / Salah'); ?>
                                 </span>
@@ -235,37 +246,42 @@
                             <div class="small text-muted mb-2">Materi: <b><?= $s['nama_materi']; ?></b></div>
                             <h5 class="fw-bold mb-3"><?= $s['pertanyaan']; ?></h5>
 
-                            <?php if (!empty($s['gambar_soal'])) : ?>
-                                <img src="<?= $s['gambar_soal']; ?>" class="img-fluid rounded mb-3 question-image w-100" alt="Gambar Soal">
+                            <?php if (!empty($s['gambar_soal'])): ?>
+                                <img src="<?= $s['gambar_soal']; ?>" class="img-fluid rounded mb-3 question-image w-100"
+                                    alt="Gambar Soal">
                             <?php endif; ?>
 
-                            <?php if ($s['tipe_soal'] == 'pg') : ?>
-                                <?php foreach ($s['pilihan'] as $p) : ?>
-                                    <?php $checked = ((string)$jawab === (string)$p['label']) ? 'checked' : ''; ?>
+                            <?php if ($s['tipe_soal'] == 'pg'): ?>
+                                <?php foreach ($s['pilihan'] as $p): ?>
+                                    <?php $checked = ((string) $jawab === (string) $p['label']) ? 'checked' : ''; ?>
                                     <label class="answer-option">
-                                        <input type="radio" name="jawaban[<?= $s['id']; ?>]" value="<?= $p['label']; ?>" onchange="tandaiTerjawab()" <?= $checked; ?>>
+                                        <input type="radio" name="jawaban[<?= $s['id']; ?>]" value="<?= $p['label']; ?>"
+                                            onchange="tandaiTerjawab()" <?= $checked; ?>>
                                         <b><?= $p['label']; ?>.</b> <?= $p['isi']; ?>
                                     </label>
                                 <?php endforeach; ?>
-                            <?php elseif ($s['tipe_soal'] == 'pg_kompleks') : ?>
+                            <?php elseif ($s['tipe_soal'] == 'pg_kompleks'): ?>
                                 <?php $jawab_arr = is_array($jawab) ? $jawab : []; ?>
-                                <?php foreach ($s['pilihan'] as $p) : ?>
+                                <?php foreach ($s['pilihan'] as $p): ?>
                                     <?php $checked = in_array($p['label'], $jawab_arr) ? 'checked' : ''; ?>
                                     <label class="answer-option">
-                                        <input type="checkbox" name="jawaban[<?= $s['id']; ?>][]" value="<?= $p['label']; ?>" onchange="tandaiTerjawab()" <?= $checked; ?>>
+                                        <input type="checkbox" name="jawaban[<?= $s['id']; ?>][]" value="<?= $p['label']; ?>"
+                                            onchange="tandaiTerjawab()" <?= $checked; ?>>
                                         <b><?= $p['label']; ?>.</b> <?= $p['isi']; ?>
                                     </label>
                                 <?php endforeach; ?>
-                            <?php else : ?>
+                            <?php else: ?>
                                 <?php $jawab_arr = is_array($jawab) ? $jawab : []; ?>
-                                <?php foreach ($s['pernyataan'] as $p) : ?>
+                                <?php foreach ($s['pernyataan'] as $p): ?>
                                     <div class="answer-option">
                                         <div class="fw-bold mb-2"><?= $p['label']; ?>. <?= $p['teks']; ?></div>
                                         <label class="me-3">
-                                            <input type="radio" name="jawaban[<?= $s['id']; ?>][<?= $p['id']; ?>]" value="Benar" onchange="tandaiTerjawab()" <?= (($jawab_arr[$p['id']] ?? '') == 'Benar') ? 'checked' : ''; ?>> Benar
+                                            <input type="radio" name="jawaban[<?= $s['id']; ?>][<?= $p['id']; ?>]" value="Benar"
+                                                onchange="tandaiTerjawab()" <?= (($jawab_arr[$p['id']] ?? '') == 'Benar') ? 'checked' : ''; ?>> Benar
                                         </label>
                                         <label>
-                                            <input type="radio" name="jawaban[<?= $s['id']; ?>][<?= $p['id']; ?>]" value="Salah" onchange="tandaiTerjawab()" <?= (($jawab_arr[$p['id']] ?? '') == 'Salah') ? 'checked' : ''; ?>> Salah
+                                            <input type="radio" name="jawaban[<?= $s['id']; ?>][<?= $p['id']; ?>]" value="Salah"
+                                                onchange="tandaiTerjawab()" <?= (($jawab_arr[$p['id']] ?? '') == 'Salah') ? 'checked' : ''; ?>> Salah
                                         </label>
                                     </div>
                                 <?php endforeach; ?>
@@ -276,10 +292,13 @@
             <?php endforeach; ?>
 
             <div class="d-flex gap-2 mb-3">
-                <button type="button" class="btn btn-light border w-50 btn-touch" onclick="sebelumnya()">Sebelumnya</button>
-                <button type="button" class="btn btn-primary w-50 btn-touch" onclick="selanjutnya()">Selanjutnya</button>
+                <button type="button" class="btn btn-light border w-50 btn-touch"
+                    onclick="sebelumnya()">Sebelumnya</button>
+                <button type="button" class="btn btn-primary w-50 btn-touch"
+                    onclick="selanjutnya()">Selanjutnya</button>
             </div>
-            <button type="button" class="btn btn-success w-100 btn-touch" onclick="konfirmasiKumpulkan()">Kumpulkan</button>
+            <button type="button" class="btn btn-success w-100 btn-touch"
+                onclick="konfirmasiKumpulkan()">Kumpulkan</button>
         </form>
     </main>
 
@@ -287,11 +306,18 @@
         let indexSoal = 0;
         let totalSoal = <?= count($soal); ?>;
         let waktuMulai = new Date('<?= date('c', strtotime($pengerjaan['waktu_mulai'])); ?>').getTime();
-        let durasiDetik = <?= (int)$pengerjaan['durasi_menit']; ?> * 60;
+        let durasiDetik = <?= (int) $pengerjaan['durasi_menit']; ?> * 60;
         let intervalTimer;
         let sedangSubmit = false;
         let lockKeluar = false;
+        let sedangReload = false;
+        let keluarSudahDicatat = false;
+        let touchAwalY = 0;
+        let alertReloadAktif = false;
         const AKSARA_LAST_QUESTION_KEY = 'aksara_last_question_<?= (int) $pengerjaan['id']; ?>';
+        const AKSARA_LEAVE_ALERT_KEY = 'aksara_leave_alert_<?= (int) $pengerjaan['id']; ?>';
+        const AKSARA_LEAVE_ALERT_SESI_KEY = 'aksara_leave_alert_sesi_<?= (int) $pengerjaan['id_sesi_soal']; ?>';
+        const AKSARA_KELUAR_URL = '<?= base_url('pengerjaan/keluar_halaman/' . $pengerjaan['id']) ?>';
 
         $(document).ready(function () {
             jalanTimer();
@@ -305,6 +331,9 @@
                     bukaSoal(indexRestore, false);
                 }
             }
+
+            tampilkanPeringatanKeluarTersimpan();
+            beriTahuParentPengerjaanSiap();
         });
 
         $(document).on('change', 'input[type="radio"], input[type="checkbox"]', function () {
@@ -337,7 +366,7 @@
                 sessionStorage.setItem(AKSARA_LAST_QUESTION_KEY, index);
             }
 
-            window.scrollTo({top: 0, behavior: 'smooth'});
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         function sebelumnya() {
@@ -368,6 +397,16 @@
             });
         }
 
+        function beriTahuParentPengerjaanSiap() {
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'AKSARA_EXAM_READY',
+                    id_pengerjaan: <?= (int) $pengerjaan['id']; ?>,
+                    keluar_url: AKSARA_KELUAR_URL
+                }, window.location.origin);
+            }
+        }
+
         function jalanTimer() {
             intervalTimer = setInterval(function () {
                 let sekarang = new Date().getTime();
@@ -378,15 +417,7 @@
                     clearInterval(intervalTimer);
                     $('#timer').text('00:00:00');
                     $('#status_pengerjaan').val('Waktu Habis');
-                    // Swal.fire({
-                    //     title: 'Waktu Habis',
-                    //     text: 'Jawaban Anda otomatis dikumpulkan oleh sistem.',
-                    //     icon: 'warning',
-                    //     confirmButtonText: 'Lihat Hasil',
-                    //     allowOutsideClick: false
-                    // }).then(() => {
-                        kumpulkanJawaban('Waktu Habis');
-                    // });
+                    kumpulkanJawaban('Waktu Habis');
                     return;
                 }
 
@@ -414,33 +445,20 @@
             });
         }
 
-function konfirmasiKeluarPengerjaan(urlTujuan) {
-    if (sedangSubmit) {
-        window.location.href = urlTujuan;
-        return;
-    }
-
-    Swal.fire({
-        title: 'Keluar dari Pengerjaan?',
-        text: 'Jika keluar dari halaman pengerjaan, sistem akan mencatat aktivitas keluar halaman.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Keluar',
-        cancelButtonText: 'Tetap Mengerjakan',
-        reverseButtons: true,
-        allowOutsideClick: false
-    }).then((result) => {
-        if (result.isConfirmed) {
-            sedangSubmit = true;
-
-            if (navigator.sendBeacon) {
-                navigator.sendBeacon('<?= base_url('pengerjaan/keluar_halaman/' . $pengerjaan['id']) ?>');
+        function konfirmasiKeluarPengerjaan(urlTujuan) {
+            if (sedangSubmit) {
+                window.location.href = urlTujuan;
+                return;
             }
 
-            window.location.href = urlTujuan;
+            Swal.fire({
+                title: 'Tidak Bisa Kembali Saat Pengerjaan',
+                text: 'Anda sedang mengerjakan soal. Halaman tidak dapat kembali ke sebelumnya selama pengerjaan berlangsung.',
+                icon: 'warning',
+                confirmButtonText: 'Ya',
+                allowOutsideClick: false
+            });
         }
-    });
-}
         function kumpulkanJawaban(status) {
             if (sedangSubmit) return;
             sedangSubmit = true;
@@ -452,45 +470,88 @@ function konfirmasiKeluarPengerjaan(urlTujuan) {
                 dataType: 'JSON',
                 data: $('#form-jawaban').serialize(),
                 beforeSend: function () {
-    Swal.fire({
-        title: status === 'Waktu Habis' ? 'Waktu Habis' : 'Menyimpan jawaban...',
-        text: status === 'Waktu Habis' ? 'Jawaban Anda otomatis dikumpulkan oleh sistem.' : 'Mohon tunggu sebentar.',
-        icon: status === 'Waktu Habis' ? 'warning' : undefined,
-        allowOutsideClick: false,
-        showConfirmButton: false,
+                    Swal.fire({
+                        title: status === 'Waktu Habis' ? 'Waktu Habis' : 'Menyimpan jawaban...',
+                        text: status === 'Waktu Habis' ? 'Jawaban Anda otomatis dikumpulkan oleh sistem.' : 'Mohon tunggu sebentar.',
+                        icon: status === 'Waktu Habis' ? 'warning' : undefined,
+                        allowOutsideClick: false,
+                        showConfirmButton: false,
 
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
-},
-                // beforeSend: function () {
-                //     Swal.fire({
-                //         title: 'Menyimpan jawaban...',
-                //         text: 'Mohon tunggu sebentar.',
-                //         allowOutsideClick: false,
-                //         didOpen: () => {
-                //             Swal.showLoading();
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                },
+
+                // success: function (res) {
+                //     if (res.result == 'true') {
+                //         sessionStorage.removeItem(AKSARA_LAST_QUESTION_KEY);
+                //         let redirectUrl = res.redirect || '<?= base_url('pengerjaan/hasil/' . $pengerjaan['id']) ?>';
+
+                //         if (window.parent && window.parent !== window) {
+                //             window.parent.postMessage({
+                //                 type: 'AKSARA_EXAM_FINISHED',
+                //                 redirect: redirectUrl
+                //             }, window.location.origin);
+                //         } else {
+                //             exitFullscreenAksara(function () {
+                //                 window.location.href = redirectUrl;
+                //             });
                 //         }
-                //     });
+                //     }
                 // },
                 success: function (res) {
-                  if (res.result == 'true') {
-    sessionStorage.removeItem(AKSARA_LAST_QUESTION_KEY);
-    let redirectUrl = res.redirect || '<?= base_url('pengerjaan/hasil/' . $pengerjaan['id']) ?>';
+    if (res.result == 'true') {
+        sessionStorage.removeItem(AKSARA_LAST_QUESTION_KEY);
 
-    if (window.parent && window.parent !== window) {
-        window.parent.postMessage({
-            type: 'AKSARA_EXAM_FINISHED',
-            redirect: redirectUrl
-        }, window.location.origin);
-    } else {
-        exitFullscreenAksara(function () {
-            window.location.href = redirectUrl;
-        });
+        let redirectUrl = res.redirect || '<?= base_url('pengerjaan/hasil/' . $pengerjaan['id']) ?>';
+
+        /*
+         * Jika timer habis:
+         * 1. Jawaban sudah otomatis dikirim dulu.
+         * 2. Setelah berhasil tersimpan, baru tampil Swal "Lihat Hasil".
+         * 3. Setelah klik Lihat Hasil, baru redirect ke halaman hasil.
+         */
+        if (status === 'Waktu Habis') {
+            Swal.fire({
+                title: 'Waktu Habis',
+                text: 'Waktu pengerjaan telah habis. Jawaban Anda otomatis dikumpulkan oleh sistem.',
+                icon: 'warning',
+                confirmButtonText: 'Lihat Hasil',
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            }).then(() => {
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'AKSARA_EXAM_FINISHED',
+                        redirect: redirectUrl
+                    }, window.location.origin);
+                } else {
+                    exitFullscreenAksara(function () {
+                        window.location.href = redirectUrl;
+                    });
+                }
+            });
+
+            return;
+        }
+
+        /*
+         * Jika kumpulkan manual:
+         * langsung ke halaman hasil setelah data tersimpan.
+         */
+        if (window.parent && window.parent !== window) {
+            window.parent.postMessage({
+                type: 'AKSARA_EXAM_FINISHED',
+                redirect: redirectUrl
+            }, window.location.origin);
+        } else {
+            exitFullscreenAksara(function () {
+                window.location.href = redirectUrl;
+            });
+        }
     }
-}
-                },
+},
                 error: function () {
                     sedangSubmit = false;
                     Swal.fire('Gagal', 'Terjadi kesalahan saat mengumpulkan jawaban.', 'error');
@@ -499,95 +560,255 @@ function konfirmasiKeluarPengerjaan(urlTujuan) {
         }
 
         document.addEventListener('visibilitychange', function () {
-            if (document.hidden && !sedangSubmit) {
-                catatKeluarHalaman();
+            if (!document.hidden) {
+                sedangReload = false;
+                keluarSudahDicatat = false;
+                tampilkanPeringatanKeluarTersimpan();
             }
         });
 
-window.addEventListener('beforeunload', function (event) {
-    if (sedangSubmit) {
-        return;
-    }
+        window.addEventListener('beforeunload', function (event) {
+            if (sedangSubmit) {
+                return;
+            }
 
-    /*
-     * Untuk refresh / close tab browser, SweetAlert tidak bisa dipakai.
-     * Browser hanya mengizinkan alert bawaan beforeunload.
-     */
-    event.preventDefault();
-    event.returnValue = '';
+            sedangReload = true;
 
-    return '';
-});
-window.addEventListener('pagehide', function () {
-    if (!sedangSubmit && navigator.sendBeacon) {
-        navigator.sendBeacon('<?= base_url('pengerjaan/keluar_halaman/' . $pengerjaan['id']) ?>');
-    }
-});
+            if (window.parent === window) {
+                event.preventDefault();
+                event.returnValue = '';
+                return '';
+            }
+        });
+        // pagehide/sendBeacon sengaja tidak dipakai supaya reload tidak menambah keluar_halaman.
+        // Aturan pindah tab tetap memakai visibilitychange dan catatKeluarHalaman().
 
-        function catatKeluarHalaman() {
-            if (lockKeluar) return;
+        function tampilkanPeringatanKeluarData(data) {
+            if (!data || !data.keluar_halaman) {
+                return;
+            }
+
+            if (data.keluar_halaman == 1) {
+                Swal.fire('Peringatan 1', 'Anda terdeteksi meninggalkan halaman pengerjaan. Jika keluar halaman sebanyak 3 kali, seluruh jawaban akan dihapus.', 'warning');
+            } else if (data.keluar_halaman == 2) {
+                Swal.fire('Peringatan Terakhir', 'Anda sudah 2 kali meninggalkan halaman pengerjaan. Jika keluar sekali lagi, seluruh jawaban akan dihapus.', 'warning');
+            } else if (data.keluar_halaman >= 3) {
+                $('input').prop('checked', false);
+                updateOptionActive();
+                tandaiTerjawab(false);
+                bukaSoal(0);
+                Swal.fire('Jawaban Dihapus', 'Jawaban Anda telah dihapus karena meninggalkan halaman pengerjaan sebanyak 3 kali. Timer tetap berjalan.', 'error');
+            }
+        }
+
+        function tampilkanPeringatanKeluarTersimpan() {
+            let dataAlert = sessionStorage.getItem(AKSARA_LEAVE_ALERT_KEY)
+                || sessionStorage.getItem(AKSARA_LEAVE_ALERT_SESI_KEY);
+
+            if (!dataAlert) {
+                return;
+            }
+
+            sessionStorage.removeItem(AKSARA_LEAVE_ALERT_KEY);
+            sessionStorage.removeItem(AKSARA_LEAVE_ALERT_SESI_KEY);
+
+            try {
+                tampilkanPeringatanKeluarData(JSON.parse(dataAlert));
+            } catch (e) {
+                console.log('Data peringatan keluar tidak valid:', e);
+            }
+        }
+
+        $(document).on('keydown', function (event) {
+            let key = event.key ? event.key.toLowerCase() : '';
+            let isReloadKey = key === 'f5' || ((event.ctrlKey || event.metaKey) && key === 'r');
+
+            if (!isReloadKey || sedangSubmit) {
+                return;
+            }
+
+            event.preventDefault();
+            tampilkanAlertTidakBisaReload();
+        });
+
+        function tampilkanAlertTidakBisaReload() {
+            if (alertReloadAktif || sedangSubmit) {
+                return;
+            }
+
+            alertReloadAktif = true;
+
+            Swal.fire({
+                title: 'Tidak Bisa Reload Saat Pengerjaan',
+                text: 'Anda sedang mengerjakan soal. Halaman tidak dapat direload selama pengerjaan berlangsung.',
+                icon: 'warning',
+                confirmButtonText: 'Ya',
+                allowOutsideClick: false
+            }).then(() => {
+                alertReloadAktif = false;
+            });
+        }
+
+        document.addEventListener('touchstart', function (event) {
+            if (event.touches.length !== 1) {
+                return;
+            }
+
+            touchAwalY = event.touches[0].clientY;
+        }, { passive: true });
+
+        document.addEventListener('touchmove', function (event) {
+            if (event.touches.length !== 1 || sedangSubmit) {
+                return;
+            }
+
+            let posisiScrollAtas = window.scrollY <= 0 || document.documentElement.scrollTop <= 0;
+            let tarikKeBawah = event.touches[0].clientY - touchAwalY;
+
+            if (posisiScrollAtas && tarikKeBawah > 24) {
+                event.preventDefault();
+                tampilkanAlertTidakBisaReload();
+            }
+        }, { passive: false });
+
+        window.addEventListener('message', function (event) {
+            if (event.origin !== window.location.origin) {
+                return;
+            }
+
+            if (!event.data || !event.data.type) {
+                return;
+            }
+
+            if (event.data.type === 'AKSARA_EXAM_PARENT_HIDDEN') {
+                return;
+            }
+
+            if (event.data.type === 'AKSARA_EXAM_PARENT_VISIBLE') {
+                sedangReload = false;
+                keluarSudahDicatat = false;
+                tampilkanPeringatanKeluarTersimpan();
+                return;
+            }
+
+            if (event.data.type === 'AKSARA_EXAM_BACK_KELUAR') {
+                catatKeluarHalamanKarenaBack();
+                return;
+            }
+
+            if (event.data.type === 'AKSARA_EXAM_RESET_JAWABAN') {
+                $('input').prop('checked', false);
+                updateOptionActive();
+                tandaiTerjawab(false);
+                bukaSoal(0);
+            }
+        });
+
+        function catatKeluarHalamanKarenaBack() {
+            if (sedangSubmit) {
+                return;
+            }
+
+            sedangSubmit = true;
+            sedangReload = true;
+
+            catatKeluarHalamanSekali(function () {
+                sessionStorage.removeItem(AKSARA_LAST_QUESTION_KEY);
+
+                if (window.parent && window.parent !== window) {
+                    window.parent.postMessage({
+                        type: 'AKSARA_EXAM_BACK_KELUAR_DONE',
+                        redirect: '<?= base_url('sesi') ?>'
+                    }, window.location.origin);
+                } else {
+                    window.location.href = '<?= base_url('sesi') ?>';
+                }
+            }, true);
+        }
+
+
+        function catatKeluarHalaman(simpanAlert = false) {
+            if (lockKeluar || keluarSudahDicatat) return;
             lockKeluar = true;
-            setTimeout(() => lockKeluar = false, 1500);
+            keluarSudahDicatat = true;
 
+            catatKeluarHalamanSekali(function () { }, simpanAlert);
+        }
+
+        function simpanResponseKeluarHalaman(data) {
+            if (!data || !data.keluar_halaman) {
+                return;
+            }
+
+            let payload = JSON.stringify(data);
+            sessionStorage.setItem(AKSARA_LEAVE_ALERT_KEY, payload);
+            sessionStorage.setItem(AKSARA_LEAVE_ALERT_SESI_KEY, payload);
+        }
+
+        function catatKeluarHalamanSekali(callback, simpanAlert) {
             $.ajax({
                 url: '<?= base_url('pengerjaan/keluar_halaman/' . $pengerjaan['id']) ?>',
                 type: 'POST',
                 dataType: 'JSON',
                 success: function (data) {
-                    if (data.keluar_halaman == 1) {
-                        Swal.fire('Peringatan 1', 'Anda terdeteksi meninggalkan halaman pengerjaan. Jika keluar halaman sebanyak 3 kali, seluruh jawaban akan dihapus.', 'warning');
-                    } else if (data.keluar_halaman == 2) {
-                        Swal.fire('Peringatan Terakhir', 'Anda sudah 2 kali meninggalkan halaman pengerjaan. Jika keluar sekali lagi, seluruh jawaban akan dihapus.', 'warning');
-                    } else if (data.keluar_halaman >= 3) {
-                        $('input').prop('checked', false);
-                        updateOptionActive();
-                        tandaiTerjawab(false);
-                        bukaSoal(0);
-                        Swal.fire('Jawaban Dihapus', 'Jawaban Anda telah dihapus karena meninggalkan halaman pengerjaan sebanyak 3 kali. Timer tetap berjalan.', 'error');
+                    if (simpanAlert) {
+                        simpanResponseKeluarHalaman(data);
+                    } else if (document.hidden) {
+                        simpanResponseKeluarHalaman(data);
+                    } else {
+                        tampilkanPeringatanKeluarData(data);
+                    }
+                },
+                complete: function () {
+                    lockKeluar = false;
+
+                    if (typeof callback === 'function') {
+                        callback();
                     }
                 }
             });
         }
         async function requestFullscreenAksara() {
-    let elem = document.documentElement;
+            let elem = document.documentElement;
 
-    try {
-        if (document.fullscreenElement || document.webkitFullscreenElement) {
-            return;
+            try {
+                if (document.fullscreenElement || document.webkitFullscreenElement) {
+                    return;
+                }
+
+                if (elem.requestFullscreen) {
+                    await elem.requestFullscreen();
+                } else if (elem.webkitRequestFullscreen) {
+                    await elem.webkitRequestFullscreen();
+                } else if (elem.msRequestFullscreen) {
+                    await elem.msRequestFullscreen();
+                }
+            } catch (e) {
+                console.log('Fullscreen tidak aktif:', e);
+            }
         }
 
-        if (elem.requestFullscreen) {
-            await elem.requestFullscreen();
-        } else if (elem.webkitRequestFullscreen) {
-            await elem.webkitRequestFullscreen();
-        } else if (elem.msRequestFullscreen) {
-            await elem.msRequestFullscreen();
-        }
-    } catch (e) {
-        console.log('Fullscreen tidak aktif:', e);
-    }
-}
+        function exitFullscreenAksara(callback) {
+            let selesai = function () {
+                if (typeof callback === 'function') {
+                    callback();
+                }
+            };
 
-function exitFullscreenAksara(callback) {
-    let selesai = function () {
-        if (typeof callback === 'function') {
-            callback();
+            try {
+                if (document.fullscreenElement && document.exitFullscreen) {
+                    document.exitFullscreen().then(selesai).catch(selesai);
+                } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                    setTimeout(selesai, 300);
+                } else {
+                    selesai();
+                }
+            } catch (e) {
+                selesai();
+            }
         }
-    };
-
-    try {
-        if (document.fullscreenElement && document.exitFullscreen) {
-            document.exitFullscreen().then(selesai).catch(selesai);
-        } else if (document.webkitFullscreenElement && document.webkitExitFullscreen) {
-            document.webkitExitFullscreen();
-            setTimeout(selesai, 300);
-        } else {
-            selesai();
-        }
-    } catch (e) {
-        selesai();
-    }
-}
     </script>
 </body>
+
 </html>

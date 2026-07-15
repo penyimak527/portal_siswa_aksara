@@ -122,11 +122,11 @@ class M_portal_siswa extends CI_Model
         $bulan = (int) date('m');
         return $bulan >= 7 ? $tahun . '/' . ($tahun + 1) : ($tahun - 1) . '/' . $tahun;
     }
-public function kelas_riwayat_result()
-{
-    $id_siswa = $this->current_id_siswa();
+    public function kelas_riwayat_result()
+    {
+        $id_siswa = $this->current_id_siswa();
 
-    return $this->db->query("
+        return $this->db->query("
         SELECT DISTINCT 
             k.id,
             k.nama_kelas,
@@ -138,7 +138,7 @@ public function kelas_riwayat_result()
         AND ps.id_kelas IS NOT NULL
         ORDER BY k.nama_kelas ASC
     ", [$id_siswa])->result_array();
-}
+    }
 
     private function current_id_siswa()
     {
@@ -160,10 +160,8 @@ public function kelas_riwayat_result()
     public function ada_tunggakan_bulan_lalu($id_siswa = null)
     {
         $id_siswa = $id_siswa ?: $this->current_id_siswa();
-
-        $prev = strtotime('first day of previous month');
-        $bulan = date('m', $prev);
-        $tahun = date('Y', $prev);
+        $bulan = (int) date('m');
+        $tahun = (int) date('Y');
 
         $sql = "SELECT COUNT(*) AS total
                 FROM pembayaran p
@@ -171,11 +169,70 @@ public function kelas_riwayat_result()
                 INNER JOIN siswa s ON s.id = pp.id_siswa
                 WHERE pp.id_siswa = ?
                 AND pp.status_aktif = '1'
-                AND p.periode_bulan = ?
-                AND p.periode_tahun = ?
-                AND COALESCE(p.status, '') <> 'Lunas'";
-        $row = $this->db->query($sql, [$id_siswa, $bulan, $tahun])->row_array();
+                AND COALESCE(p.status, '') <> 'Lunas'
+                AND p.periode_bulan IS NOT NULL
+                AND p.periode_bulan != ''
+                AND p.periode_tahun IS NOT NULL
+                AND p.periode_tahun != ''
+                AND (
+                    CAST(p.periode_tahun AS UNSIGNED) < ?
+                    OR (
+                        CAST(p.periode_tahun AS UNSIGNED) = ?
+                        AND CAST(p.periode_bulan AS UNSIGNED) <= ?
+                    )
+                )";
+        $row = $this->db->query($sql, [$id_siswa, $tahun, $tahun, $bulan])->row_array();
         return ((int) ($row['total'] ?? 0)) > 0;
+    }
+
+    public function cek_akses()
+    {
+        $id_sesi = (int) $this->input->post('id_sesi');
+
+        if ($id_sesi <= 0) {
+            return [
+                'status' => false,
+                'result' => 'false',
+                'ada_tunggakan' => 'false',
+                'message' => 'Sesi soal tidak ditemukan.'
+            ];
+        }
+
+        if ($this->ada_tunggakan_bulan_lalu()) {
+            return [
+                'status' => false,
+                'result' => 'false',
+                'ada_tunggakan' => 'true',
+                'message' => 'Maaf, sesi soal baru belum dapat diakses karena masih terdapat pembayaran yang belum diselesaikan. Silahkan hubungi admin bimbel untuk informasi lebih lanjut.'
+            ];
+        }
+
+        if ($this->siswa_sudah_mengerjakan($id_sesi)) {
+            return [
+                'status' => false,
+                'result' => 'false',
+                'ada_tunggakan' => 'false',
+                'message' => 'Sesi ini sudah dikerjakan maksimal 2 kali.'
+            ];
+        }
+
+        $sesi = $this->sesi_detail($id_sesi);
+        if (!$sesi) {
+            return [
+                'status' => false,
+                'result' => 'false',
+                'ada_tunggakan' => 'false',
+                'message' => 'Sesi soal tidak ditemukan atau belum dapat dikerjakan.'
+            ];
+        }
+
+        return [
+            'status' => true,
+            'result' => 'true',
+            'ada_tunggakan' => 'false',
+            'message' => 'Sesi dapat diakses.',
+            'redirect' => base_url('sesi/konfirmasi/' . $id_sesi)
+        ];
     }
 
     private function filter_sesi_where(&$where, &$params)
@@ -239,17 +296,17 @@ public function kelas_riwayat_result()
                 continue;
             }
 
-           // Bimbel wajib aktif dan wajib ikut jadwal.
+            // Bimbel wajib aktif dan wajib ikut jadwal.
 // Kalau sesi nonaktif / jadwal habis dan belum Bimbel, jangan tampil.
-if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
-    if ((string) ($row['status_aktif'] ?? '0') !== '1') {
-        continue;
-    }
+            if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
+                if ((string) ($row['status_aktif'] ?? '0') !== '1') {
+                    continue;
+                }
 
-    if (!$this->sesi_masuk_jadwal($row)) {
-        continue;
-    }
-}
+                if (!$this->sesi_masuk_jadwal($row)) {
+                    continue;
+                }
+            }
 
             // Rumah boleh walaupun jadwal sudah habis, asalkan sesi masih aktif.
             $row['jenis_pengerjaan'] = $attempt['jenis_pengerjaan'];
@@ -304,15 +361,15 @@ if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
             return null;
         }
 
-       if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
-    if ((string) ($row['status_aktif'] ?? '0') !== '1') {
-        return null;
-    }
+        if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
+            if ((string) ($row['status_aktif'] ?? '0') !== '1') {
+                return null;
+            }
 
-    if (!$this->sesi_masuk_jadwal($row)) {
-        return null;
-    }
-}
+            if (!$this->sesi_masuk_jadwal($row)) {
+                return null;
+            }
+        }
 
         $row['jenis_pengerjaan'] = $attempt['jenis_pengerjaan'];
         $row['urutan_pengerjaan'] = $attempt['urutan'];
@@ -390,9 +447,9 @@ if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
         $params = [$id_siswa];
 
         if ($id_kelas != '') {
-    $where[] = "ps.id_kelas = ?";
-    $params[] = $id_kelas;
-}
+            $where[] = "ps.id_kelas = ?";
+            $params[] = $id_kelas;
+        }
         if ($mapel != '') {
             $where[] = "ss.id_mata_pelajaran = ?";
             $params[] = $mapel;
@@ -447,7 +504,7 @@ if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
         if ($this->ada_tunggakan_bulan_lalu($id_siswa)) {
             return [
                 'status' => false,
-                'message' => 'Akses sesi ditolak karena masih terdapat tunggakan pembayaran bulan sebelumnya.',
+                'message' => 'Maaf, sesi soal baru belum dapat diakses karena masih terdapat pembayaran yang belum diselesaikan. Silakan hubungi admin bimbel untuk menyelesaikan pembayaran.',
                 'locked' => true
             ];
         }
@@ -468,14 +525,15 @@ if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
 
         $jenis_pengerjaan = $attempt['jenis_pengerjaan'];
 
-      if ($jenis_pengerjaan == 'Bimbel') {
-    if ((string) ($sesi['status_aktif'] ?? '0') !== '1') {
-        return ['status' => false, 'message' => 'Sesi soal sudah tidak aktif.'];
-    }
+        if ($jenis_pengerjaan == 'Bimbel') {
+            if ((string) ($sesi['status_aktif'] ?? '0') !== '1') {
+                return ['status' => false, 'message' => 'Sesi soal sudah tidak aktif.'];
+            }
 
-    if (!$this->sesi_masuk_jadwal($sesi)) {
-        return ['status' => false, 'message' => 'Jadwal pengerjaan Bimbel sudah berakhir.'];
-    }}
+            if (!$this->sesi_masuk_jadwal($sesi)) {
+                return ['status' => false, 'message' => 'Jadwal pengerjaan Bimbel sudah berakhir.'];
+            }
+        }
 
         $data = [
             'id_sesi_soal' => $id_sesi,
@@ -593,14 +651,40 @@ if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
             return false;
         }
 
-        if (!is_array($jawaban)) {
-            return true;
-        }
-
         $tabel = $this->tabel_jawaban($pengerjaan['jenis_pengerjaan']);
+
+        if (!is_array($jawaban)) {
+            $jawaban = [];
+        }
+        $soal = $this->soal_pengerjaan($id_pengerjaan);
+        $id_soal_aktif = [];
+
+        foreach ($soal as $s) {
+            $id_soal_aktif[] = (int) $s['id'];
+        }
+        foreach ($id_soal_aktif as $id_soal) {
+            if (!array_key_exists($id_soal, $jawaban) && !array_key_exists((string) $id_soal, $jawaban)) {
+                $this->db->delete($tabel, [
+                    'id_pengerjaan' => $id_pengerjaan,
+                    'id_soal' => $id_soal
+                ]);
+            }
+        }
 
         foreach ($jawaban as $id_soal => $isi) {
             $id_soal = (int) $id_soal;
+
+            /*
+             * Jika array kosong, anggap dikosongkan.
+             */
+            if (is_array($isi) && count($isi) == 0) {
+                $this->db->delete($tabel, [
+                    'id_pengerjaan' => $id_pengerjaan,
+                    'id_soal' => $id_soal
+                ]);
+                continue;
+            }
+
             $json = json_encode($isi, JSON_UNESCAPED_UNICODE);
 
             $cek = $this->db->get_where($tabel, [
@@ -628,7 +712,6 @@ if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
 
         return true;
     }
-
     public function catat_keluar_halaman($id_pengerjaan)
     {
         $pengerjaan = $this->pengerjaan_detail($id_pengerjaan);
@@ -670,25 +753,22 @@ if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
     private function hitung_nilai_soal($soal, $jawaban)
     {
         $bobot = (float) $soal['bobot_nilai'];
-        // if ($jawaban === null || $jawaban === '' || (is_array($jawaban) && count($jawaban) == 0)) {
-        //     return [0, 'Kosong', []];
-        // }
         if ($jawaban === null || $jawaban === '' || (is_array($jawaban) && count($jawaban) == 0)) {
-    if ($soal['tipe_soal'] == 'benar_salah') {
-        $rows = $this->db->query("SELECT * FROM soal_jawaban WHERE id_soal = ? ORDER BY urutan ASC, id ASC ", [$soal['id']])->result_array();
-        
-        $kunci = [];
-        foreach ($rows as $row) {
-            $kunci[$row['id']] = $row['kunci_jawaban'] == '1' ? 'Benar' : 'Salah';
+            if ($soal['tipe_soal'] == 'benar_salah') {
+                $rows = $this->db->query("SELECT * FROM soal_jawaban WHERE id_soal = ? ORDER BY urutan ASC, id ASC ", [$soal['id']])->result_array();
+
+                $kunci = [];
+                foreach ($rows as $row) {
+                    $kunci[$row['id']] = $row['kunci_jawaban'] == '1' ? 'Benar' : 'Salah';
+                }
+
+                return [0, 'Kosong', $kunci];
+            }
+
+            $kunci = $this->kunci_soal($soal['id']);
+
+            return [0, 'Kosong', $kunci];
         }
-
-        return [0, 'Kosong', $kunci];
-    }
-
-    $kunci = $this->kunci_soal($soal['id']);
-
-    return [0, 'Kosong', $kunci];
-}
 
         if ($soal['tipe_soal'] == 'pg') {
             $kunci = $this->kunci_soal($soal['id']);

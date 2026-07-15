@@ -1,9 +1,5 @@
 <?= $this->session->flashdata('message'); ?>
 
-<div id="alert-tunggakan" class="alert alert-warning rounded-4" style="display:none;">
-    Sesi baru belum dapat diakses karena masih terdapat tunggakan pembayaran bulan sebelumnya.
-</div>
-
 <div class="card student-card mb-3">
     <div class="card-body">
         <div class="row g-2">
@@ -51,6 +47,74 @@
 <script>
     let adaTunggakan = <?= !empty($ada_tunggakan) ? 'true' : 'false'; ?>;
 
+    function cekAksesSesi(idSesi) {
+        if (!idSesi) {
+            return;
+        }
+
+        $.ajax({
+            url: '<?= base_url('sesi/cek_akses'); ?>',
+            type: 'POST',
+            dataType: 'JSON',
+            data: {
+                id_sesi: idSesi
+            },
+            beforeSend: function () {
+                Swal.fire({
+                    title: 'Memeriksa akses...',
+                    text: 'Mohon tunggu sebentar.',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+            },
+            success: function (res) {
+                Swal.close();
+
+                if (res.ada_tunggakan == 'true') {
+                    Swal.fire({
+            title: 'Akses Sesi Ditolak',
+            html: `
+                <div class="text-center">
+                    Maaf, sesi soal baru belum dapat diakses karena masih terdapat<br>
+                    pembayaran yang belum diselesaikan.
+                    <br><br>
+                    Silahkan hubungi admin bimbel untuk informasi lebih lanjut
+                </div>
+            `,
+            icon: 'warning',
+            confirmButtonText: 'Kembali',
+            allowOutsideClick: false,
+            allowEscapeKey: false
+        });
+                    return;
+                }
+
+                if (res.result == 'true') {
+                    window.location.href = res.redirect;
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Sesi Tidak Dapat Diakses',
+                    text: res.message || 'Sesi belum dapat dikerjakan.',
+                    icon: 'warning',
+                    confirmButtonText: 'Kembali'
+                });
+            },
+            error: function () {
+                Swal.fire({
+                    title: 'Gagal',
+                    text: 'Terjadi kesalahan saat memeriksa akses sesi.',
+                    icon: 'error',
+                    confirmButtonText: 'Kembali'
+                });
+            }
+        });
+    }
+
     $(document).ready(function () {
         sesi_result();
         $('#search').on('keyup', function () {
@@ -87,12 +151,6 @@
                 }
 
                 adaTunggakan = res.ada_tunggakan == 'true';
-                if (adaTunggakan) {
-                    $('#alert-tunggakan').show();
-                } else {
-                    $('#alert-tunggakan').hide();
-                }
-
                 render_sesi(res.data || []);
             },
             error: function () {
@@ -116,11 +174,10 @@
         rows.forEach(function (row, i) {
             let tombol = '';
             if (adaTunggakan) {
-                tombol = `<a href="<?= base_url('sesi/akses_ditolak'); ?>" class="btn btn-secondary btn-touch w-100">Terkunci</a>`;
+                tombol = `<button type="button" class="btn btn-secondary btn-touch w-100" onclick="cekAksesSesi('${row.id}')">Terkunci</button>`;
             } else {
                 // let teksTombol = row.jenis_pengerjaan === 'Rumah' ? 'Kerjakan Latihan Rumah' : 'Mulai Kerjakan';
-                // tombol = `<a href="<?= base_url('sesi/konfirmasi/'); ?>${row.id}" class="btn btn-primary btn-touch w-100">${teksTombol}</a>`;
-                tombol = `<a href="<?= base_url('sesi/konfirmasi/'); ?>${row.id}" class="btn btn-primary btn-touch w-100">Mulai Kerjakan</a>`;
+                tombol = `<button type="button" class="btn btn-primary btn-touch w-100" onclick="cekAksesSesi('${row.id}')">Mulai Kerjakan</button>`;
             }
             // <span class="badge bg-primary-subtle text-primary rounded-pill">${escapeHtml(row.label_pengerjaan || row.jenis_pengerjaan)}</span>
             html += `

@@ -1,26 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8" />
     <title><?= $title; ?> | Portal Siswa</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="shortcut icon" href="<?= base_url(); ?>assets/logo-a.jpg">
-<link href="<?= base_url(); ?>assets/vendor/jsvectormap/jsvectormap.min.css" rel="stylesheet" type="text/css">
-	<script src="<?= base_url(); ?>assets/js/config.js"></script>
-	<link href="<?= base_url(); ?>assets/css/vendor.min.css" rel="stylesheet" type="text/css" />
-	<link href="<?= base_url(); ?>assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
-	<link href="<?= base_url(); ?>assets/css/icons.min.css" rel="stylesheet" type="text/css" />
-	<link href="<?= base_url(); ?>assets/css/lightbox.css" rel="stylesheet" type="text/css" />
-	<link rel="stylesheet" href="https://unpkg.com/@tabler/icons-webfont@latest/tabler-icons.min.css">
-	<link href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css" rel="stylesheet"
-		type="text/css" />
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jodit@3.1.3/build/jodit.min.css" />
-	<link rel="stylesheet" href="https://smkryoyuwaraja.sch.id/assets/admin/css/lightbox.css" />
-	<link href="<?= base_url(); ?>assets/css/jquery.autocomplete.css" rel="stylesheet" type="text/css" />
-	<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link href="<?= base_url(); ?>assets/vendor/jsvectormap/jsvectormap.min.css" rel="stylesheet" type="text/css">
+    <script src="<?= base_url(); ?>assets/js/config.js"></script>
+    <link href="<?= base_url(); ?>assets/css/vendor.min.css" rel="stylesheet" type="text/css" />
+    <link href="<?= base_url(); ?>assets/css/app.min.css" rel="stylesheet" type="text/css" id="app-style" />
+    <link href="<?= base_url(); ?>assets/css/icons.min.css" rel="stylesheet" type="text/css" />
+    <link href="<?= base_url(); ?>assets/css/lightbox.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" href="https://unpkg.com/@tabler/icons-webfont@latest/tabler-icons.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/Dropify/0.2.2/css/dropify.min.css" rel="stylesheet"
+        type="text/css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/jodit@3.1.3/build/jodit.min.css" />
+    <link rel="stylesheet" href="https://smkryoyuwaraja.sch.id/assets/admin/css/lightbox.css" />
+    <link href="<?= base_url(); ?>assets/css/jquery.autocomplete.css" rel="stylesheet" type="text/css" />
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <style>
         .portal-siswa-page {
             --aksara-yellow: #f2ad0d;
@@ -81,7 +82,7 @@
             border-color: rgba(242, 173, 13, .38);
         }
 
-        .portal-siswa-page .student-card .card-body > h5.fw-bold:first-child,
+        .portal-siswa-page .student-card .card-body>h5.fw-bold:first-child,
         .portal-siswa-page .student-card .card-body .fw-bold.mb-0 {
             color: var(--aksara-dark);
         }
@@ -111,17 +112,17 @@
             border-color: rgba(242, 173, 13, .22) !important;
         }
 
-        .portal-siswa-page .student-card .row.g-2 > div:nth-child(2n) .bg-light {
+        .portal-siswa-page .student-card .row.g-2>div:nth-child(2n) .bg-light {
             background-color: var(--aksara-blue-soft) !important;
             border-color: rgba(37, 99, 235, .14) !important;
         }
 
-        .portal-siswa-page .student-card .row.g-2 > div:nth-child(3n) .bg-light {
+        .portal-siswa-page .student-card .row.g-2>div:nth-child(3n) .bg-light {
             background-color: var(--aksara-green-soft) !important;
             border-color: rgba(16, 185, 129, .14) !important;
         }
 
-        .portal-siswa-page .student-card .row.g-2 > div:nth-child(4n) .bg-light {
+        .portal-siswa-page .student-card .row.g-2>div:nth-child(4n) .bg-light {
             background-color: var(--aksara-purple-soft) !important;
             border-color: rgba(139, 92, 246, .14) !important;
         }
@@ -270,6 +271,7 @@
         }
     </style>
 </head>
+
 <body class="portal-siswa-page">
     <?php $uri = $this->uri->segment(1); ?>
     <div class="student-topbar" id="header">
@@ -278,22 +280,23 @@
                 <h5 class="mb-0 fw-bold"><?= $title; ?></h5>
                 <small class="text-muted"><?= $this->session->userdata('siswa')['nama_siswa'] ?? 'Siswa'; ?></small>
             </div>
-            <a href="javascript:void(0)" onclick="logout()" class="btn btn-sm btn-outline-danger rounded-pill"><i class="ri-logout-box-r-line"></i></a>
+            <a href="javascript:void(0)" onclick="logout()" class="btn btn-sm btn-outline-danger rounded-pill"><i
+                    class="ri-logout-box-r-line"></i></a>
         </div>
     </div>
     <main class="student-shell px-3 py-3">
-    <script>
-        function logout() {
-            Swal.fire({
-                title: 'Yakin ingin keluar?',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Ya',
-                cancelButtonText: 'Tidak'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = "<?= base_url('login/keluar') ?>";
-                }
-            })
-        }
-    </script>
+        <script>
+            function logout() {
+                Swal.fire({
+                    title: 'Yakin ingin keluar?',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ya',
+                    cancelButtonText: 'Tidak'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = "<?= base_url('login/keluar') ?>";
+                    }
+                })
+            }
+        </script>
