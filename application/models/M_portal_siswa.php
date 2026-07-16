@@ -1271,7 +1271,8 @@ class M_portal_siswa extends CI_Model
         foreach ($materi as &$row) {
             $persen = max(0, min(100, (float) ($row['persen'] ?? 0)));
             $row['persen'] = round($persen, 0);
-            $row['status'] = $persen >= 86 ? 'Sangat Baik' : ($persen >= 76 ? 'Baik' : ($persen >= 60 ? 'Cukup' : 'Perlu Ditingkatkan'));
+            // $row['status'] = $persen >= 86 ? 'Sangat Baik' : ($persen >= 76 ? 'Baik' : ($persen >= 60 ? 'Cukup' : 'Perlu Ditingkatkan'));
+            $row['status'] = $persen >= 70 ? 'Dikuasai' : 'Perlu Ditingkatkan';
         }
         unset($row);
 
@@ -1468,12 +1469,13 @@ class M_portal_siswa extends CI_Model
                 'id' => (int) $row['id'],
                 'nama_materi' => $row['nama_materi'] ?? '-',
                 'persen' => round($persen, 0),
-                'status' => $persen >= 86 ? 'Sangat Baik' : ($persen >= 76 ? 'Baik' : ($persen >= 60 ? 'Cukup' : 'Perlu Ditingkatkan')),
+                // 'status' => $persen >= 86 ? 'Sangat Baik' : ($persen >= 76 ? 'Baik' : ($persen >= 60 ? 'Cukup' : 'Perlu Ditingkatkan')),
+                'status' => $persen >= 70 ? 'Dikuasai' : 'Perlu Ditingkatkan',
                 'jumlah_pengerjaan' => (int) ($row['jumlah_pengerjaan'] ?? 0),
                 'jumlah_soal' => (int) ($row['jumlah_soal'] ?? 0)
             ];
 
-            if ($persen >= 76) {
+            if ($persen >= 70) {
                 $dikuasai[] = $item;
             } else {
                 $lemah[] = $item;

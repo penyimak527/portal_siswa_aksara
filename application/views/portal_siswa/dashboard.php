@@ -201,10 +201,10 @@
                 <div id="data_materi_dashboard" class="materi-modal-list"></div>
 
                 <div class="d-flex flex-column flex-md-row justify-content-between align-items-center align-items-md-center flex-wrap gap-2 mt-2">
-                    <ul class="pagination pagination-sm pagination-boxed mb-0" id="pagination_materi_dashboard"></ul>
+                    <ul class="pagination pagination-sm pagination-boxed mb-0" id="pagination"></ul>
                     <div class="d-flex align-items-center gap-2">
-                        <label for="jumlah_materi_dashboard" class="mb-0">Tampilkan</label>
-                        <select class="form-select form-select-sm" id="jumlah_materi_dashboard">
+                        <label for="dt-length-0" class="mb-0">Tampilkan</label>
+                        <select class="form-select form-select-sm" id="dt-length-0">
                             <option value="10" selected>10</option>
                             <option value="25">25</option>
                             <option value="50">50</option>
@@ -300,7 +300,7 @@ function bukaMateriDashboard(jenis) {
     }
 
     $('#filter_materi_mapel').val('');
-    $('#jumlah_materi_dashboard').val('10');
+    $('#dt-length-0').val('10');
     $('#modalMateriDashboard').modal('show');
     materiDashboardResult();
 }
@@ -324,7 +324,7 @@ function materiDashboardResult() {
                     </div>
                 </div>
             `);
-            $('#pagination_materi_dashboard').empty();
+            $('#pagination').empty();
         },
         success: function (res) {
             let data = Array.isArray(res.data) ? res.data : [];
@@ -373,8 +373,7 @@ function materiDashboardResult() {
             }
 
             $('#data_materi_dashboard').html(html);
-            let jumlahAwal = parseInt($('#jumlah_materi_dashboard').val());
-            pagingMateri($('#data_materi_dashboard .card-mapel'), jumlahAwal);
+            applyPagingMateriDashboard();
         },
         error: function () {
             $('#data_materi_dashboard').html(`
@@ -386,66 +385,38 @@ function materiDashboardResult() {
                     </div>
                 </div>
             `);
-            $('#pagination_materi_dashboard').empty();
+            $('#pagination').empty();
         }
     });
 }
 
-function pagingMateri($selector, jumlah_tampil = 10) {
-    const $pagination = $('#pagination_materi_dashboard');
-    const total = $selector.length;
-    const pageSize = parseInt(jumlah_tampil) || 10;
+function applyPagingMateriDashboard() {
+    let jumlah = parseInt($('#dt-length-0').val()) || 10;
+    paging($('#data_materi_dashboard .card-mapel'), jumlah);
+}
 
-    $pagination.empty();
+function paging($selector, jumlah_tampil = 10) {
+    $('#pagination').empty();
 
-    if (total <= pageSize) {
-        $selector.show();
+    if (!$selector || $selector.length === 0) {
         return;
     }
 
-    if (typeof Pagination === 'function') {
-        window.paginationMateriDashboard = new Pagination('#pagination_materi_dashboard', {
-            itemsCount: total,
-            pageSize: pageSize,
-            onPageChange: function (paging) {
-                let start = paging.pageSize * (paging.currentPage - 1);
-                let end = start + paging.pageSize;
+    window.tp = new Pagination('#pagination', {
+        itemsCount: $selector.length,
+        pageSize: parseInt(jumlah_tampil),
+        onPageChange: function (paging) {
+            let start = paging.pageSize * (paging.currentPage - 1);
+            let end = start + paging.pageSize;
+            let $rows = $selector;
 
-                $selector.hide();
-                for (let i = start; i < end; i++) {
-                    $selector.eq(i).show();
-                }
+            $rows.hide();
+
+            for (let i = start; i < end; i++) {
+                $rows.eq(i).show();
             }
-        });
-        return;
-    }
-
-    let pageCount = Math.ceil(total / pageSize);
-
-    function showPage(page) {
-        let start = pageSize * (page - 1);
-        let end = start + pageSize;
-
-        $selector.hide();
-        $selector.slice(start, end).show();
-
-        $pagination.find('.page-item').removeClass('active');
-        $pagination.find(`[data-page="${page}"]`).closest('.page-item').addClass('active');
-    }
-
-    for (let i = 1; i <= pageCount; i++) {
-        $pagination.append(`
-            <li class="page-item ${i == 1 ? 'active' : ''}">
-                <a class="page-link" href="javascript:void(0)" data-page="${i}">${i}</a>
-            </li>
-        `);
-    }
-
-    $pagination.find('.page-link').on('click', function () {
-        showPage(parseInt($(this).data('page')));
+        }
     });
-
-    showPage(1);
 }
 
 function escapeHtml(text) {
@@ -457,8 +428,8 @@ function escapeHtml(text) {
         .replace(/'/g, '&#039;');
 }
 
-$('#jumlah_materi_dashboard').on('change', function () {
-    pagingMateri($('#data_materi_dashboard .card-mapel'), parseInt($(this).val()));
+$('#dt-length-0').on('change', function () {
+    applyPagingMateriDashboard();
 });
 
 </script>

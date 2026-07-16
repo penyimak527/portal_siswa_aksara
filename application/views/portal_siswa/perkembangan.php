@@ -55,7 +55,8 @@
         </div>
     </div> -->
 
-    <div class="card student-card mb-3">
+    <!-- <div class="card student-card mb-3"> -->
+        <div class="card student-card chart-card-perkembangan mb-3">
         <div class="card-body">
             <h5 class="fw-bold mb-1">Perkembangan Nilai per Bulan</h5>
             <p class="text-muted small mb-3">Nilai merupakan rata-rata seluruh pengerjaan pada setiap bulan dalam semester yang dipilih.</p>
@@ -113,7 +114,20 @@
                             <span id="total-materi-dikuasai" class="badge bg-success-subtle text-success">0 materi</span>
                         </div>
                         <div id="list-materi-dikuasai"></div>
-                        <div id="pagination-materi-dikuasai" class="d-flex justify-content-center flex-wrap gap-1 mt-3"></div>
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center flex-wrap gap-2 mt-2">
+                            <ul class="pagination pagination-sm pagination-boxed mb-0" id="pagination_dikuasai"></ul>
+
+                            <div class="d-flex align-items-center gap-2">
+                                <label for="dt-length-dikuasai" class="mb-0">Tampilkan</label>
+                                <select class="form-select form-select-sm" id="dt-length-dikuasai">
+                                    <option value="10" selected>10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                                <span>entri</span>
+                            </div>
+                        </div>
                     </section>
 
                     <hr>
@@ -124,17 +138,102 @@
                             <span id="total-materi-lemah" class="badge bg-warning-subtle text-warning-emphasis">0 materi</span>
                         </div>
                         <div id="list-materi-lemah"></div>
-                        <div id="pagination-materi-lemah" class="d-flex justify-content-center flex-wrap gap-1 mt-3"></div>
+                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center flex-wrap gap-2 mt-2">
+                            <ul class="pagination pagination-sm pagination-boxed mb-0" id="pagination_lemah"></ul>
+
+                            <div class="d-flex align-items-center gap-2">
+                                <label for="dt-length-lemah" class="mb-0">Tampilkan</label>
+                                <select class="form-select form-select-sm" id="dt-length-lemah">
+                                    <option value="10" selected>10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                                <span>entri</span>
+                            </div>
+                        </div>
                     </section>
                 </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
     </div>
 </div>
 
 <style>
+    .chart-card-perkembangan,
+    .chart-card-perkembangan .card-body,
+    #chart-perkembangan,
+    #chart-perkembangan .apexcharts-canvas {
+        overflow: visible !important;
+    }
+
+    .chart-card-perkembangan {
+        position: relative;
+        z-index: 2;
+    }
+
+    #chart-perkembangan {
+        position: relative;
+        min-height: 340px;
+    }
+
     #chart-perkembangan .apexcharts-marker {
         cursor: pointer;
+    }
+
+    #chart-perkembangan .apexcharts-tooltip {
+        z-index: 99999 !important;
+        white-space: normal !important;
+        border-radius: 12px !important;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, .14) !important;
+    }
+
+    #modal-materi-bulanan .card-mapel {
+        border: 1px solid rgba(15, 23, 42, .08);
+        border-radius: 14px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
+        background: #fff;
+        box-shadow: 0 3px 12px rgba(15, 23, 42, .04);
+    }
+
+    #modal-materi-bulanan .keterangan-hari {
+        margin: 0 0 6px 0;
+        padding: 0;
+        font-size: 12px;
+        color: #6c757d;
+    }
+
+    #modal-materi-bulanan .keterangan-mapel {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+
+    #modal-materi-bulanan .keterangan-mapel-kiri {
+        flex: 1;
+        min-width: 0;
+    }
+
+    #modal-materi-bulanan .keterangan-mapel-kanan {
+        flex: 0 0 auto;
+    }
+
+    #modal-materi-bulanan .judul-mapel {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 700;
+        line-height: 1.35;
+    }
+
+    @media (max-width: 575.98px) {
+        #chart-perkembangan .apexcharts-tooltip {
+            max-width: 240px !important;
+        }
     }
 </style>
 
@@ -144,9 +243,7 @@
     let lastChartPointClick = 0;
     let konteksMateriBulanan = {
         bulan: 0,
-        jenis_pengerjaan: '',
-        page_dikuasai: 1,
-        page_lemah: 1
+        jenis_pengerjaan: ''
     };
 
     function escapeHtml(value) {
@@ -156,12 +253,12 @@
     function bukaModalMateriBulanan(bulan, namaBulan, jenisPengerjaan) {
         konteksMateriBulanan = {
             bulan: Number(bulan),
-            jenis_pengerjaan: jenisPengerjaan,
-            page_dikuasai: 1,
-            page_lemah: 1
+            jenis_pengerjaan: jenisPengerjaan
         };
 
         $('#modal-materi-periode').text(namaBulan + ' • ' + jenisPengerjaan);
+        $('#dt-length-dikuasai').val('10');
+        $('#dt-length-lemah').val('10');
 
         const modalEl = document.getElementById('modal-materi-bulanan');
         if (window.bootstrap && bootstrap.Modal) {
@@ -174,40 +271,75 @@
         loadMateriBulanan();
     }
 
-    function renderMateriList(items, target, emptyText) {
+    function renderMateriList(items, target, emptyText, jenis) {
         if (!items || items.length === 0) {
-            $(target).html('<div class="text-center text-muted small py-4 border rounded-3">' + escapeHtml(emptyText) + '</div>');
+            $(target).html('<div class="card-mapel"><div class="keterangan-mapel"><div class="keterangan-mapel-kiri"><h5 class="judul-mapel">Tidak ada data</h5><p style="margin:0; padding:0; font-size:12px; margin-bottom:4px;">' + escapeHtml(emptyText) + '</p></div></div></div>');
             return;
         }
 
         let html = '';
-        items.forEach(function(item, index) {
-            html += '<div class="border rounded-3 p-3 mb-2">';
-            html += '<div class="d-flex justify-content-between gap-3 align-items-start">';
-            html += '<div><div class="fw-semibold">' + escapeHtml(item.nama_materi) + '</div>';
-            html += '<small class="text-muted">' + escapeHtml(item.jumlah_soal) + ' soal dari ' + escapeHtml(item.jumlah_pengerjaan) + ' pengerjaan</small></div>';
-            html += '<div class="text-end flex-shrink-0"><strong>' + escapeHtml(item.persen) + '%</strong><br><small class="text-muted">' + escapeHtml(item.status) + '</small></div>';
-            html += '</div>';
-            html += '<div class="progress mt-2" style="height:6px"><div class="progress-bar" role="progressbar" style="width:' + Number(item.persen) + '%" aria-valuenow="' + Number(item.persen) + '" aria-valuemin="0" aria-valuemax="100"></div></div>';
-            html += '</div>';
+        let statusClass = jenis === 'dikuasai' ? 'success' : 'warning';
+        let no = 1;
+
+        items.forEach(function(item) {
+            let persen = Math.round(Number(item.persen || 0));
+            html += `
+                <div class="card-mapel">
+                    <p class="keterangan-hari">
+                        <span>Status: <span class="badge bg-${statusClass}">${escapeHtml(item.status || '-')}</span></span>
+                    </p>
+                    <div class="keterangan-mapel">
+                        <div class="keterangan-mapel-kiri">
+                            <h5 class="judul-mapel">${no++}. ${escapeHtml(item.nama_materi || '-')}</h5>
+                            <p style="margin: 0; padding: 0; font-size: 12px; margin-bottom: 4px;">
+                                <b>Jumlah Soal:</b> ${escapeHtml(item.jumlah_soal || 0)}<br>
+                                <b>Jumlah Pengerjaan:</b> ${escapeHtml(item.jumlah_pengerjaan || 0)}<br>
+                                <b>Penguasaan:</b> ${persen}%
+                            </p>
+                        </div>
+                        <div class="keterangan-mapel-kanan">
+                            <span class="badge bg-light text-dark border">${persen}%</span>
+                        </div>
+                    </div>
+                </div>
+            `;
         });
+
         $(target).html(html);
     }
 
-    function renderPagination(info, target, jenis) {
-        const totalPage = Number(info.total_page || 1);
-        const currentPage = Number(info.page || 1);
-        if (Number(info.total || 0) === 0 || totalPage <= 1) {
-            $(target).empty();
+    function applyPagingMateriDikuasai() {
+        let jumlah = parseInt($('#dt-length-dikuasai').val()) || 10;
+        paging($('#list-materi-dikuasai .card-mapel'), jumlah, '#pagination_dikuasai');
+    }
+
+    function applyPagingMateriLemah() {
+        let jumlah = parseInt($('#dt-length-lemah').val()) || 10;
+        paging($('#list-materi-lemah .card-mapel'), jumlah, '#pagination_lemah');
+    }
+
+    function paging($selector, jumlah_tampil = 10, paginationSelector = '#pagination') {
+        $(paginationSelector).empty();
+
+        if (!$selector || $selector.length === 0) {
             return;
         }
 
-        let html = '<button type="button" class="btn btn-sm btn-outline-secondary materi-page" data-jenis="' + jenis + '" data-page="' + (currentPage - 1) + '" ' + (currentPage <= 1 ? 'disabled' : '') + '>Sebelumnya</button>';
-        for (let page = 1; page <= totalPage; page++) {
-            html += '<button type="button" class="btn btn-sm ' + (page === currentPage ? 'btn-primary' : 'btn-outline-secondary') + ' materi-page" data-jenis="' + jenis + '" data-page="' + page + '">' + page + '</button>';
-        }
-        html += '<button type="button" class="btn btn-sm btn-outline-secondary materi-page" data-jenis="' + jenis + '" data-page="' + (currentPage + 1) + '" ' + (currentPage >= totalPage ? 'disabled' : '') + '>Selanjutnya</button>';
-        $(target).html(html);
+        new Pagination(paginationSelector, {
+            itemsCount: $selector.length,
+            pageSize: parseInt(jumlah_tampil),
+            onPageChange: function (paging) {
+                let start = paging.pageSize * (paging.currentPage - 1);
+                let end = start + paging.pageSize;
+                let $rows = $selector;
+
+                $rows.hide();
+
+                for (let i = start; i < end; i++) {
+                    $rows.eq(i).show();
+                }
+            }
+        });
     }
 
     function loadMateriBulanan() {
@@ -220,9 +352,7 @@
                 semester: $('#filter-semester').val(),
                 id_mata_pelajaran: $('#filter-mapel').val(),
                 jenis_pengerjaan: konteksMateriBulanan.jenis_pengerjaan,
-                bulan: konteksMateriBulanan.bulan,
-                page_dikuasai: konteksMateriBulanan.page_dikuasai,
-                page_lemah: konteksMateriBulanan.page_lemah
+                bulan: konteksMateriBulanan.bulan
             },
             beforeSend: function() {
                 $('#modal-materi-content').addClass('d-none');
@@ -232,18 +362,23 @@
                 if (res.result !== 'true') {
                     $('#list-materi-dikuasai').html('<div class="text-center text-muted small py-4">' + escapeHtml(res.message || 'Data tidak tersedia.') + '</div>');
                     $('#list-materi-lemah').empty();
-                    $('#pagination-materi-dikuasai, #pagination-materi-lemah').empty();
+                    $('#pagination_dikuasai, #pagination_lemah').empty();
                     return;
                 }
 
                 $('#modal-materi-periode').text(res.periode.nama_bulan + ' • ' + res.periode.jenis_pengerjaan);
-                $('#total-materi-dikuasai').text(res.pagination_dikuasai.total + ' materi');
-                $('#total-materi-lemah').text(res.pagination_lemah.total + ' materi');
 
-                renderMateriList(res.materi_dikuasai, '#list-materi-dikuasai', 'Belum ada materi yang masuk kategori dikuasai pada bulan ini.');
-                renderMateriList(res.materi_lemah, '#list-materi-lemah', 'Belum ada materi yang perlu ditingkatkan pada bulan ini.');
-                renderPagination(res.pagination_dikuasai, '#pagination-materi-dikuasai', 'dikuasai');
-                renderPagination(res.pagination_lemah, '#pagination-materi-lemah', 'lemah');
+                let materiDikuasai = Array.isArray(res.materi_dikuasai) ? res.materi_dikuasai : [];
+                let materiLemah = Array.isArray(res.materi_lemah) ? res.materi_lemah : [];
+
+                $('#total-materi-dikuasai').text(materiDikuasai.length + ' materi');
+                $('#total-materi-lemah').text(materiLemah.length + ' materi');
+
+                renderMateriList(materiDikuasai, '#list-materi-dikuasai', 'Belum ada materi yang masuk kategori dikuasai pada bulan ini.', 'dikuasai');
+                renderMateriList(materiLemah, '#list-materi-lemah', 'Belum ada materi yang perlu ditingkatkan pada bulan ini.', 'lemah');
+
+                applyPagingMateriDikuasai();
+                applyPagingMateriLemah();
             },
             error: function() {
                 $('#list-materi-dikuasai').html('<div class="text-center text-danger small py-4">Data kemampuan materi tidak dapat dimuat.</div>');
@@ -256,17 +391,6 @@
         });
     }
 
-    $(document).on('click', '.materi-page', function() {
-        if ($(this).prop('disabled')) return;
-        const jenis = $(this).data('jenis');
-        const page = Number($(this).data('page'));
-        if (jenis === 'dikuasai') {
-            konteksMateriBulanan.page_dikuasai = page;
-        } else {
-            konteksMateriBulanan.page_lemah = page;
-        }
-        loadMateriBulanan();
-    });
 
     function loadPerkembangan() {
         $.ajax({
@@ -374,9 +498,13 @@
                     dataLabels: { enabled: false },
                     legend: { position: 'top', horizontalAlign: 'right' },
                     noData: { text: 'Belum ada data pada semester ini' },
-                    tooltip: {
-                        shared: false,
-                        intersect: true,
+                  tooltip: {
+    shared: false,
+    intersect: true,
+    followCursor: true,
+    fixed: {
+        enabled: false
+    },
                         custom: function({dataPointIndex}) {
                             const item = data.grafik[dataPointIndex];
                             let html = '<div class="p-2 small" style="min-width:190px"><strong>' + escapeHtml(item.label) + '</strong>';
@@ -421,6 +549,14 @@
             }
         });
     }
+
+    $('#dt-length-dikuasai').on('change', function () {
+        applyPagingMateriDikuasai();
+    });
+
+    $('#dt-length-lemah').on('change', function () {
+        applyPagingMateriLemah();
+    });
 
     $('#btn-tampilkan').on('click', loadPerkembangan);
     loadPerkembangan();
