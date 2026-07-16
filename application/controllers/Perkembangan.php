@@ -22,6 +22,18 @@ class Perkembangan extends CI_Controller
         $this->load->view('template_siswa/footer');
     }
 
+    public function materi_bulanan_result()
+    {
+        $data = $this->model->materi_bulanan_result();
+
+        $this->output
+            ->set_status_header(200)
+            ->set_content_type('application/json', 'utf-8')
+            ->set_output(json_encode($data, JSON_PRETTY_PRINT))
+            ->_display();
+        exit;
+    }
+
     public function perkembangan_result()
     {
         $data = $this->model->perkembangan_result();

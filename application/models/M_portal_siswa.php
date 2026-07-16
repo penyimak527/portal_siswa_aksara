@@ -1385,6 +1385,143 @@ class M_portal_siswa extends CI_Model
             'message' => 'Password berhasil diperbarui.'
         ];
     }
-    
+     public function materi_bulanan_result()
+    {
+        $id_siswa = $this->current_id_siswa();
+        $id_kelas = (int) $this->input->post('id_kelas');
+        $semester = trim((string) $this->input->post('semester'));
+        $id_mata_pelajaran = (int) $this->input->post('id_mata_pelajaran');
+        $jenis_pengerjaan = trim((string) $this->input->post('jenis_pengerjaan'));
+        $bulan = (int) $this->input->post('bulan');
+        $page_dikuasai = max(1, (int) $this->input->post('page_dikuasai'));
+        $page_lemah = max(1, (int) $this->input->post('page_lemah'));
+        $limit = 5;
+
+        if ($id_siswa <= 0) {
+            return ['result' => 'false', 'status' => false, 'message' => 'Sesi login siswa tidak ditemukan.'];
+        }
+
+        if (!in_array($semester, ['Ganjil', 'Genap'], true)) {
+            return ['result' => 'false', 'status' => false, 'message' => 'Semester tidak valid.'];
+        }
+
+        if (!in_array($jenis_pengerjaan, ['Bimbel', 'Rumah'], true)) {
+            return ['result' => 'false', 'status' => false, 'message' => 'Jenis pengerjaan tidak valid.'];
+        }
+
+        $bulan_valid = $semester === 'Ganjil' ? [7, 8, 9, 10, 11, 12] : [1, 2, 3, 4, 5, 6];
+        if (!in_array($bulan, $bulan_valid, true)) {
+            return ['result' => 'false', 'status' => false, 'message' => 'Bulan tidak sesuai dengan semester yang dipilih.'];
+        }
+
+        $nama_bulan = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+        ];
+
+        $tanggal_sql = "STR_TO_DATE(ps.waktu_selesai, '%d-%m-%Y %H:%i:%s')";
+        $where = [
+            'ps.id_siswa = ?',
+            "ps.status_pengerjaan IN ('Selesai', 'Waktu Habis', 'Selesai karena timer habis')",
+            "{$tanggal_sql} IS NOT NULL",
+            "MONTH({$tanggal_sql}) = ?",
+            'ps.jenis_pengerjaan = ?'
+        ];
+        $params = [$id_siswa, $bulan, $jenis_pengerjaan];
+
+        if ($id_kelas > 0) {
+            $where[] = 'ps.id_kelas = ?';
+            $params[] = $id_kelas;
+        }
+
+        if ($id_mata_pelajaran > 0) {
+            $where[] = 'ss.id_mata_pelajaran = ?';
+            $params[] = $id_mata_pelajaran;
+        }
+
+        $where[] = 'm.id IS NOT NULL';
+        $where_sql = implode(' AND ', $where);
+        $tabel_jawaban = $jenis_pengerjaan === 'Rumah' ? 'siswa_jawaban_rumah' : 'siswa_jawaban_bimbel';
+
+        $rows = $this->db->query("SELECT
+                    m.id,
+                    m.nama_materi,
+                    ROUND((SUM(COALESCE(CAST(js.nilai AS DECIMAL(10,2)), 0)) /
+                        NULLIF(SUM(CAST(so.bobot_nilai AS DECIMAL(10,2))), 0)) * 100, 2) AS persen,
+                    COUNT(DISTINCT ps.id) AS jumlah_pengerjaan,
+                    COUNT(js.id) AS jumlah_soal
+                FROM {$tabel_jawaban} js
+                INNER JOIN siswa_pengerjaan ps ON ps.id = js.id_pengerjaan
+                INNER JOIN soal_sesi ss ON ss.id = ps.id_sesi_soal
+                INNER JOIN soal so ON so.id = js.id_soal AND so.status_hapus IS NULL
+                INNER JOIN materi m ON m.id = so.id_materi
+                WHERE {$where_sql}
+                GROUP BY m.id, m.nama_materi
+                ORDER BY persen DESC, m.nama_materi ASC", $params)->result_array();
+
+        $dikuasai = [];
+        $lemah = [];
+        foreach ($rows as $row) {
+            $persen = max(0, min(100, (float) ($row['persen'] ?? 0)));
+            $item = [
+                'id' => (int) $row['id'],
+                'nama_materi' => $row['nama_materi'] ?? '-',
+                'persen' => round($persen, 0),
+                'status' => $persen >= 86 ? 'Sangat Baik' : ($persen >= 76 ? 'Baik' : ($persen >= 60 ? 'Cukup' : 'Perlu Ditingkatkan')),
+                'jumlah_pengerjaan' => (int) ($row['jumlah_pengerjaan'] ?? 0),
+                'jumlah_soal' => (int) ($row['jumlah_soal'] ?? 0)
+            ];
+
+            if ($persen >= 76) {
+                $dikuasai[] = $item;
+            } else {
+                $lemah[] = $item;
+            }
+        }
+
+        usort($dikuasai, function ($a, $b) {
+            if ($a['persen'] === $b['persen']) return strcmp($a['nama_materi'], $b['nama_materi']);
+            return $b['persen'] <=> $a['persen'];
+        });
+        usort($lemah, function ($a, $b) {
+            if ($a['persen'] === $b['persen']) return strcmp($a['nama_materi'], $b['nama_materi']);
+            return $a['persen'] <=> $b['persen'];
+        });
+
+        $paginate = function (array $items, int $page) use ($limit) {
+            $total = count($items);
+            $total_page = max(1, (int) ceil($total / $limit));
+            $page = min(max(1, $page), $total_page);
+            return [
+                'data' => array_slice($items, ($page - 1) * $limit, $limit),
+                'pagination' => [
+                    'page' => $page,
+                    'limit' => $limit,
+                    'total' => $total,
+                    'total_page' => $total_page
+                ]
+            ];
+        };
+
+        $hasil_dikuasai = $paginate($dikuasai, $page_dikuasai);
+        $hasil_lemah = $paginate($lemah, $page_lemah);
+
+        return [
+            'result' => 'true',
+            'status' => true,
+            'message' => 'Data kemampuan materi berhasil dimuat.',
+            'periode' => [
+                'bulan' => $bulan,
+                'nama_bulan' => $nama_bulan[$bulan],
+                'semester' => $semester,
+                'jenis_pengerjaan' => $jenis_pengerjaan
+            ],
+            'materi_dikuasai' => $hasil_dikuasai['data'],
+            'pagination_dikuasai' => $hasil_dikuasai['pagination'],
+            'materi_lemah' => $hasil_lemah['data'],
+            'pagination_lemah' => $hasil_lemah['pagination']
+        ];
+    }
 }
 ?>
