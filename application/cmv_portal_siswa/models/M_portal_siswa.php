@@ -981,7 +981,6 @@ class M_portal_siswa extends CI_Model
             'jumlah_kosong' => $jumlah_kosong,
             'nilai_akhir' => $nilai_akhir,
             'status_pengerjaan' => $status,
-            'preview_diizinkan' => 1,
             'updated_at' => date('d-m-Y H:i:s')
         ]);
 
@@ -1014,37 +1013,11 @@ class M_portal_siswa extends CI_Model
         return $this->db->query($sql, [$id_pengerjaan])->result_array();
     }
 
-    // public function preview_diizinkan($id_pengerjaan)
-    // {
-    //     $row = $this->pengerjaan_detail($id_pengerjaan);
-    //     return (string) ($row['preview_diizinkan'] ?? '0') === '1';
-    // }
-public function preview_diizinkan($id_pengerjaan)
-{
-    $row = $this->pengerjaan_detail($id_pengerjaan);
-
-    if (!$row) {
-        return false;
+    public function preview_diizinkan($id_pengerjaan)
+    {
+        $row = $this->pengerjaan_detail($id_pengerjaan);
+        return (string) ($row['preview_diizinkan'] ?? '0') === '1';
     }
-
-    if ((string) ($row['preview_diizinkan'] ?? '0') !== '1') {
-        return false;
-    }
-
-    $tanggal_selesai = trim((string) ($row['tanggal_selesai'] ?? ''));
-
-    if ($tanggal_selesai === '') {
-        return false;
-    }
-
-    $tgl_selesai = strtotime($tanggal_selesai);
-    if (!$tgl_selesai) {
-        return false;
-    }
-
-    $hari_ini = strtotime(date('d-m-Y'));
-    return $hari_ini > $tgl_selesai;
-}
 
     private function label_jawaban_text($id_soal, $jawaban)
     {
