@@ -863,28 +863,98 @@ class M_portal_siswa extends CI_Model
             return [$benar ? $bobot : 0, $benar ? 'Benar' : 'Salah', $kunci];
         }
 
+        // if ($soal['tipe_soal'] == 'pg_kompleks') {
+        //     $kunci = $this->kunci_soal($soal['id']);
+        //     $jawab = is_array($jawaban) ? $jawaban : [$jawaban];
+        //     $score = 0;
+        //     foreach ($jawab as $j) {
+        //         if (in_array($j, $kunci)) {
+        //             $score++;
+        //         } else {
+        //             $score--;
+        //         }
+        //     }
+        //     if ($score < 0) {
+        //         $score = 0;
+        //     }
+        //     $total_kunci = max(count($kunci), 1);
+        //     $nilai = ($score / $total_kunci) * $bobot;
+        //     if ($nilai > $bobot) {
+        //         $nilai = $bobot;
+        //     }
+        //     $status = $nilai == $bobot ? 'Benar' : ($nilai > 0 ? 'Sebagian benar' : 'Salah');
+        //     return [$nilai, $status, $kunci];
+        // }
         if ($soal['tipe_soal'] == 'pg_kompleks') {
-            $kunci = $this->kunci_soal($soal['id']);
-            $jawab = is_array($jawaban) ? $jawaban : [$jawaban];
-            $score = 0;
-            foreach ($jawab as $j) {
-                if (in_array($j, $kunci)) {
-                    $score++;
-                } else {
-                    $score--;
-                }
-            }
-            if ($score < 0) {
-                $score = 0;
-            }
-            $total_kunci = max(count($kunci), 1);
-            $nilai = ($score / $total_kunci) * $bobot;
-            if ($nilai > $bobot) {
-                $nilai = $bobot;
-            }
-            $status = $nilai == $bobot ? 'Benar' : ($nilai > 0 ? 'Sebagian benar' : 'Salah');
-            return [$nilai, $status, $kunci];
+    $kunci = $this->kunci_soal($soal['id']);
+    $jawab = is_array($jawaban) ? $jawaban : [$jawaban];
+
+    /*
+     * Hilangkan kemungkinan pilihan ganda yang sama terkirim
+     * lebih dari satu kali.
+     */
+    $jawab = array_values(array_unique($jawab));
+
+    $total_kunci = count($kunci);
+    $total_jawaban_siswa = count($jawab);
+
+    if ($total_kunci == 0) {
+        return [0, 'Salah', $kunci];
+    }
+
+    $benar_dipilih = 0;
+    $salah_dipilih = 0;
+
+    foreach ($jawab as $j) {
+        if (in_array($j, $kunci, true)) {
+            $benar_dipilih++;
+        } else {
+            $salah_dipilih++;
         }
+    }
+
+    /*
+     * Jika jumlah pilihan siswa tidak melebihi jumlah kunci benar,
+     * jawaban salah belum menjadi pengurang.
+     */
+    if ($total_jawaban_siswa <= $total_kunci) {
+        $score = $benar_dipilih;
+    } else {
+        /*
+         * Jika pilihan siswa melebihi jumlah kunci benar,
+         * jawaban salah mulai mengurangi jawaban benar.
+         */
+        $score = $benar_dipilih - $salah_dipilih;
+    }
+
+    if ($score < 0) {
+        $score = 0;
+    }
+
+    $nilai = ($score / $total_kunci) * $bobot;
+
+    if ($nilai > $bobot) {
+        $nilai = $bobot;
+    }
+
+    /*
+     * Benar penuh hanya ketika seluruh kunci dipilih
+     * dan tidak ada pilihan salah.
+     */
+    if (
+        $benar_dipilih == $total_kunci
+        && $salah_dipilih == 0
+        && $total_jawaban_siswa == $total_kunci
+    ) {
+        $status = 'Benar';
+    } elseif ($nilai > 0) {
+        $status = 'Sebagian benar';
+    } else {
+        $status = 'Salah';
+    }
+
+    return [$nilai, $status, $kunci];
+}
 
         // Benar/Salah: jawaban berbentuk [id_jawaban => Benar/Salah]
         $rows = $this->db->query("SELECT * FROM soal_jawaban WHERE id_soal = ? ORDER BY urutan ASC, id ASC", [$soal['id']])->result_array();

@@ -863,28 +863,98 @@ class M_portal_siswa extends CI_Model
             return [$benar ? $bobot : 0, $benar ? 'Benar' : 'Salah', $kunci];
         }
 
+        // if ($soal['tipe_soal'] == 'pg_kompleks') {
+        //     $kunci = $this->kunci_soal($soal['id']);
+        //     $jawab = is_array($jawaban) ? $jawaban : [$jawaban];
+        //     $score = 0;
+        //     foreach ($jawab as $j) {
+        //         if (in_array($j, $kunci)) {
+        //             $score++;
+        //         } else {
+        //             $score--;
+        //         }
+        //     }
+        //     if ($score < 0) {
+        //         $score = 0;
+        //     }
+        //     $total_kunci = max(count($kunci), 1);
+        //     $nilai = ($score / $total_kunci) * $bobot;
+        //     if ($nilai > $bobot) {
+        //         $nilai = $bobot;
+        //     }
+        //     $status = $nilai == $bobot ? 'Benar' : ($nilai > 0 ? 'Sebagian benar' : 'Salah');
+        //     return [$nilai, $status, $kunci];
+        // }
         if ($soal['tipe_soal'] == 'pg_kompleks') {
-            $kunci = $this->kunci_soal($soal['id']);
-            $jawab = is_array($jawaban) ? $jawaban : [$jawaban];
-            $score = 0;
-            foreach ($jawab as $j) {
-                if (in_array($j, $kunci)) {
-                    $score++;
-                } else {
-                    $score--;
-                }
-            }
-            if ($score < 0) {
-                $score = 0;
-            }
-            $total_kunci = max(count($kunci), 1);
-            $nilai = ($score / $total_kunci) * $bobot;
-            if ($nilai > $bobot) {
-                $nilai = $bobot;
-            }
-            $status = $nilai == $bobot ? 'Benar' : ($nilai > 0 ? 'Sebagian benar' : 'Salah');
-            return [$nilai, $status, $kunci];
+    $kunci = $this->kunci_soal($soal['id']);
+    $jawab = is_array($jawaban) ? $jawaban : [$jawaban];
+
+    /*
+     * Hilangkan kemungkinan pilihan ganda yang sama terkirim
+     * lebih dari satu kali.
+     */
+    $jawab = array_values(array_unique($jawab));
+
+    $total_kunci = count($kunci);
+    $total_jawaban_siswa = count($jawab);
+
+    if ($total_kunci == 0) {
+        return [0, 'Salah', $kunci];
+    }
+
+    $benar_dipilih = 0;
+    $salah_dipilih = 0;
+
+    foreach ($jawab as $j) {
+        if (in_array($j, $kunci, true)) {
+            $benar_dipilih++;
+        } else {
+            $salah_dipilih++;
         }
+    }
+
+    /*
+     * Jika jumlah pilihan siswa tidak melebihi jumlah kunci benar,
+     * jawaban salah belum menjadi pengurang.
+     */
+    if ($total_jawaban_siswa <= $total_kunci) {
+        $score = $benar_dipilih;
+    } else {
+        /*
+         * Jika pilihan siswa melebihi jumlah kunci benar,
+         * jawaban salah mulai mengurangi jawaban benar.
+         */
+        $score = $benar_dipilih - $salah_dipilih;
+    }
+
+    if ($score < 0) {
+        $score = 0;
+    }
+
+    $nilai = ($score / $total_kunci) * $bobot;
+
+    if ($nilai > $bobot) {
+        $nilai = $bobot;
+    }
+
+    /*
+     * Benar penuh hanya ketika seluruh kunci dipilih
+     * dan tidak ada pilihan salah.
+     */
+    if (
+        $benar_dipilih == $total_kunci
+        && $salah_dipilih == 0
+        && $total_jawaban_siswa == $total_kunci
+    ) {
+        $status = 'Benar';
+    } elseif ($nilai > 0) {
+        $status = 'Sebagian benar';
+    } else {
+        $status = 'Salah';
+    }
+
+    return [$nilai, $status, $kunci];
+}
 
         // Benar/Salah: jawaban berbentuk [id_jawaban => Benar/Salah]
         $rows = $this->db->query("SELECT * FROM soal_jawaban WHERE id_soal = ? ORDER BY urutan ASC, id ASC", [$soal['id']])->result_array();
@@ -981,6 +1051,7 @@ class M_portal_siswa extends CI_Model
             'jumlah_kosong' => $jumlah_kosong,
             'nilai_akhir' => $nilai_akhir,
             'status_pengerjaan' => $status,
+            'preview_diizinkan' => 1,
             'updated_at' => date('d-m-Y H:i:s')
         ]);
 
@@ -1013,11 +1084,37 @@ class M_portal_siswa extends CI_Model
         return $this->db->query($sql, [$id_pengerjaan])->result_array();
     }
 
-    public function preview_diizinkan($id_pengerjaan)
-    {
-        $row = $this->pengerjaan_detail($id_pengerjaan);
-        return (string) ($row['preview_diizinkan'] ?? '0') === '1';
+    // public function preview_diizinkan($id_pengerjaan)
+    // {
+    //     $row = $this->pengerjaan_detail($id_pengerjaan);
+    //     return (string) ($row['preview_diizinkan'] ?? '0') === '1';
+    // }
+public function preview_diizinkan($id_pengerjaan)
+{
+    $row = $this->pengerjaan_detail($id_pengerjaan);
+
+    if (!$row) {
+        return false;
     }
+
+    if ((string) ($row['preview_diizinkan'] ?? '0') !== '1') {
+        return false;
+    }
+
+    $tanggal_selesai = trim((string) ($row['tanggal_selesai'] ?? ''));
+
+    if ($tanggal_selesai === '') {
+        return false;
+    }
+
+    $tgl_selesai = strtotime($tanggal_selesai);
+    if (!$tgl_selesai) {
+        return false;
+    }
+
+    $hari_ini = strtotime(date('d-m-Y'));
+    return $hari_ini > $tgl_selesai;
+}
 
     private function label_jawaban_text($id_soal, $jawaban)
     {
