@@ -439,7 +439,7 @@ class M_portal_siswa extends CI_Model
         return $rows;
     }
 
-     public function ringkasan_dashboard()
+    public function ringkasan_dashboard()
     {
         $id_siswa = $this->current_id_siswa();
         $sesi_tersedia = count($this->sesi_tersedia());
@@ -516,7 +516,7 @@ class M_portal_siswa extends CI_Model
         ];
     }
 
-    
+
     public function riwayat_terbaru($limit = 5)
     {
         return $this->riwayat_result($limit);
@@ -886,75 +886,96 @@ class M_portal_siswa extends CI_Model
         //     return [$nilai, $status, $kunci];
         // }
         if ($soal['tipe_soal'] == 'pg_kompleks') {
-    $kunci = $this->kunci_soal($soal['id']);
-    $jawab = is_array($jawaban) ? $jawaban : [$jawaban];
+            $rows = $this->db->query("SELECT label_jawaban, kunci_jawaban
+         FROM soal_jawaban
+         WHERE id_soal = ?
+         ORDER BY urutan ASC, id ASC",[$soal['id']])->result_array();
 
-    /*
-     * Hilangkan kemungkinan pilihan ganda yang sama terkirim
-     * lebih dari satu kali.
-     */
-    $jawab = array_values(array_unique($jawab));
+            $kunci = [];
+            $semua_pilihan = [];
+            foreach ($rows as $row) {
+                $label = (string) $row['label_jawaban'];
+                $semua_pilihan[] = $label;
 
-    $total_kunci = count($kunci);
-    $total_jawaban_siswa = count($jawab);
+                if ((string) $row['kunci_jawaban'] === '1') {
+                    $kunci[] = $label;
+                }
+            }
 
-    if ($total_kunci == 0) {
-        return [0, 'Salah', $kunci];
-    }
+            $jawab = is_array($jawaban) ? $jawaban : [$jawaban];
 
-    $benar_dipilih = 0;
-    $salah_dipilih = 0;
+            /*
+             * Hilangkan pilihan yang terkirim lebih dari satu kali.
+             */
+            $jawab = array_values(array_unique(array_map('strval', $jawab)));
 
-    foreach ($jawab as $j) {
-        if (in_array($j, $kunci, true)) {
-            $benar_dipilih++;
-        } else {
-            $salah_dipilih++;
+            /*
+             * Abaikan pilihan yang sudah tidak tersedia atau tidak valid.
+             */
+            $jawab = array_values(array_intersect($jawab, $semua_pilihan));
+
+            $total_pilihan = count($semua_pilihan);
+            $total_kunci = count($kunci);
+            $total_jawaban_siswa = count($jawab);
+
+            if ($total_pilihan == 0 || $total_kunci == 0) {
+                return [0, 'Salah', $kunci];
+            }
+
+            $benar_dipilih = 0;
+            $salah_dipilih = 0;
+
+            foreach ($jawab as $j) {
+                if (in_array($j, $kunci, true)) {
+                    $benar_dipilih++;
+                } else {
+                    $salah_dipilih++;
+                }
+            }
+
+            /*
+             * Rumus:
+             * - Skor maksimal mengikuti jumlah seluruh pilihan.
+             * - Setiap pilihan salah yang dicentang mengurangi 1 skor.
+             * - Jika tidak ada satu pun jawaban benar yang dipilih,
+             *   nilai soal menjadi 0.
+             */
+            if ($benar_dipilih == 0) {
+                $score = 0;
+            } else {
+                $score = $total_pilihan - $salah_dipilih;
+            }
+
+            /*
+             * Skor tidak boleh kurang dari 0 dan tidak boleh
+             * melebihi jumlah seluruh pilihan.
+             */
+            $score = max(0, min($score, $total_pilihan));
+
+            /*
+             * Konversi skor berdasarkan bobot soal.
+             */
+            $nilai = ($score / $total_pilihan) * $bobot;
+            $nilai = max(0, min($nilai, $bobot));
+
+            /*
+             * Status Benar hanya jika seluruh kunci dipilih
+             * dan tidak ada pilihan salah yang dicentang.
+             */
+            if (
+                $benar_dipilih == $total_kunci
+                && $salah_dipilih == 0
+                && $total_jawaban_siswa == $total_kunci
+            ) {
+                $status = 'Benar';
+            } elseif ($nilai > 0) {
+                $status = 'Sebagian benar';
+            } else {
+                $status = 'Salah';
+            }
+
+            return [$nilai, $status, $kunci];
         }
-    }
-
-    /*
-     * Jika jumlah pilihan siswa tidak melebihi jumlah kunci benar,
-     * jawaban salah belum menjadi pengurang.
-     */
-    if ($total_jawaban_siswa <= $total_kunci) {
-        $score = $benar_dipilih;
-    } else {
-        /*
-         * Jika pilihan siswa melebihi jumlah kunci benar,
-         * jawaban salah mulai mengurangi jawaban benar.
-         */
-        $score = $benar_dipilih - $salah_dipilih;
-    }
-
-    if ($score < 0) {
-        $score = 0;
-    }
-
-    $nilai = ($score / $total_kunci) * $bobot;
-
-    if ($nilai > $bobot) {
-        $nilai = $bobot;
-    }
-
-    /*
-     * Benar penuh hanya ketika seluruh kunci dipilih
-     * dan tidak ada pilihan salah.
-     */
-    if (
-        $benar_dipilih == $total_kunci
-        && $salah_dipilih == 0
-        && $total_jawaban_siswa == $total_kunci
-    ) {
-        $status = 'Benar';
-    } elseif ($nilai > 0) {
-        $status = 'Sebagian benar';
-    } else {
-        $status = 'Salah';
-    }
-
-    return [$nilai, $status, $kunci];
-}
 
         // Benar/Salah: jawaban berbentuk [id_jawaban => Benar/Salah]
         $rows = $this->db->query("SELECT * FROM soal_jawaban WHERE id_soal = ? ORDER BY urutan ASC, id ASC", [$soal['id']])->result_array();
@@ -1089,32 +1110,32 @@ class M_portal_siswa extends CI_Model
     //     $row = $this->pengerjaan_detail($id_pengerjaan);
     //     return (string) ($row['preview_diizinkan'] ?? '0') === '1';
     // }
-public function preview_diizinkan($id_pengerjaan)
-{
-    $row = $this->pengerjaan_detail($id_pengerjaan);
+    public function preview_diizinkan($id_pengerjaan)
+    {
+        $row = $this->pengerjaan_detail($id_pengerjaan);
 
-    if (!$row) {
-        return false;
+        if (!$row) {
+            return false;
+        }
+
+        if ((string) ($row['preview_diizinkan'] ?? '0') !== '1') {
+            return false;
+        }
+
+        $tanggal_selesai = trim((string) ($row['tanggal_selesai'] ?? ''));
+
+        if ($tanggal_selesai === '') {
+            return false;
+        }
+
+        $tgl_selesai = strtotime($tanggal_selesai);
+        if (!$tgl_selesai) {
+            return false;
+        }
+
+        $hari_ini = strtotime(date('d-m-Y'));
+        return $hari_ini > $tgl_selesai;
     }
-
-    if ((string) ($row['preview_diizinkan'] ?? '0') !== '1') {
-        return false;
-    }
-
-    $tanggal_selesai = trim((string) ($row['tanggal_selesai'] ?? ''));
-
-    if ($tanggal_selesai === '') {
-        return false;
-    }
-
-    $tgl_selesai = strtotime($tanggal_selesai);
-    if (!$tgl_selesai) {
-        return false;
-    }
-
-    $hari_ini = strtotime(date('d-m-Y'));
-    return $hari_ini > $tgl_selesai;
-}
 
     private function label_jawaban_text($id_soal, $jawaban)
     {
@@ -1324,14 +1345,17 @@ public function preview_diizinkan($id_pengerjaan)
         $nilai_ringkasan = [];
         foreach ($grafik as $row) {
             if ($jenis_pengerjaan === 'Bimbel') {
-                if ($row['bimbel'] !== null) $nilai_ringkasan[] = $row['bimbel'];
+                if ($row['bimbel'] !== null)
+                    $nilai_ringkasan[] = $row['bimbel'];
             } elseif ($jenis_pengerjaan === 'Rumah') {
-                if ($row['rumah'] !== null) $nilai_ringkasan[] = $row['rumah'];
+                if ($row['rumah'] !== null)
+                    $nilai_ringkasan[] = $row['rumah'];
             } else {
                 $nilai_bulan = array_values(array_filter([$row['bimbel'], $row['rumah']], function ($nilai) {
                     return $nilai !== null;
                 }));
-                if (!empty($nilai_bulan)) $nilai_ringkasan[] = array_sum($nilai_bulan) / count($nilai_bulan);
+                if (!empty($nilai_bulan))
+                    $nilai_ringkasan[] = array_sum($nilai_bulan) / count($nilai_bulan);
             }
         }
 
@@ -1483,7 +1507,7 @@ public function preview_diizinkan($id_pengerjaan)
             'message' => 'Password berhasil diperbarui.'
         ];
     }
-     public function materi_bulanan_result()
+    public function materi_bulanan_result()
     {
         $id_siswa = $this->current_id_siswa();
         $id_kelas = (int) $this->input->post('id_kelas');
@@ -1513,9 +1537,18 @@ public function preview_diizinkan($id_pengerjaan)
         }
 
         $nama_bulan = [
-            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
-            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember'
         ];
 
         $tanggal_sql = "STR_TO_DATE(ps.waktu_selesai, '%d-%m-%Y %H:%i:%s')";
@@ -1580,11 +1613,13 @@ public function preview_diizinkan($id_pengerjaan)
         }
 
         usort($dikuasai, function ($a, $b) {
-            if ($a['persen'] === $b['persen']) return strcmp($a['nama_materi'], $b['nama_materi']);
+            if ($a['persen'] === $b['persen'])
+                return strcmp($a['nama_materi'], $b['nama_materi']);
             return $b['persen'] <=> $a['persen'];
         });
         usort($lemah, function ($a, $b) {
-            if ($a['persen'] === $b['persen']) return strcmp($a['nama_materi'], $b['nama_materi']);
+            if ($a['persen'] === $b['persen'])
+                return strcmp($a['nama_materi'], $b['nama_materi']);
             return $a['persen'] <=> $b['persen'];
         });
 
