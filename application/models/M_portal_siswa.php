@@ -885,97 +885,123 @@ class M_portal_siswa extends CI_Model
         //     $status = $nilai == $bobot ? 'Benar' : ($nilai > 0 ? 'Sebagian benar' : 'Salah');
         //     return [$nilai, $status, $kunci];
         // }
-        if ($soal['tipe_soal'] == 'pg_kompleks') {
-            $rows = $this->db->query("SELECT label_jawaban, kunci_jawaban
+if ($soal['tipe_soal'] == 'pg_kompleks') {
+    $rows = $this->db->query(
+        "SELECT label_jawaban, kunci_jawaban
          FROM soal_jawaban
          WHERE id_soal = ?
-         ORDER BY urutan ASC, id ASC",[$soal['id']])->result_array();
+         ORDER BY urutan ASC, id ASC",
+        [$soal['id']]
+    )->result_array();
 
-            $kunci = [];
-            $semua_pilihan = [];
-            foreach ($rows as $row) {
-                $label = (string) $row['label_jawaban'];
-                $semua_pilihan[] = $label;
+    $kunci = [];
+    $semua_pilihan = [];
 
-                if ((string) $row['kunci_jawaban'] === '1') {
-                    $kunci[] = $label;
-                }
-            }
+    foreach ($rows as $row) {
+        $label = (string) $row['label_jawaban'];
+        $semua_pilihan[] = $label;
 
-            $jawab = is_array($jawaban) ? $jawaban : [$jawaban];
-
-            /*
-             * Hilangkan pilihan yang terkirim lebih dari satu kali.
-             */
-            $jawab = array_values(array_unique(array_map('strval', $jawab)));
-
-            /*
-             * Abaikan pilihan yang sudah tidak tersedia atau tidak valid.
-             */
-            $jawab = array_values(array_intersect($jawab, $semua_pilihan));
-
-            $total_pilihan = count($semua_pilihan);
-            $total_kunci = count($kunci);
-            $total_jawaban_siswa = count($jawab);
-
-            if ($total_pilihan == 0 || $total_kunci == 0) {
-                return [0, 'Salah', $kunci];
-            }
-
-            $benar_dipilih = 0;
-            $salah_dipilih = 0;
-
-            foreach ($jawab as $j) {
-                if (in_array($j, $kunci, true)) {
-                    $benar_dipilih++;
-                } else {
-                    $salah_dipilih++;
-                }
-            }
-
-            /*
-             * Rumus:
-             * - Skor maksimal mengikuti jumlah seluruh pilihan.
-             * - Setiap pilihan salah yang dicentang mengurangi 1 skor.
-             * - Jika tidak ada satu pun jawaban benar yang dipilih,
-             *   nilai soal menjadi 0.
-             */
-            if ($benar_dipilih == 0) {
-                $score = 0;
-            } else {
-                $score = $total_pilihan - $salah_dipilih;
-            }
-
-            /*
-             * Skor tidak boleh kurang dari 0 dan tidak boleh
-             * melebihi jumlah seluruh pilihan.
-             */
-            $score = max(0, min($score, $total_pilihan));
-
-            /*
-             * Konversi skor berdasarkan bobot soal.
-             */
-            $nilai = ($score / $total_pilihan) * $bobot;
-            $nilai = max(0, min($nilai, $bobot));
-
-            /*
-             * Status Benar hanya jika seluruh kunci dipilih
-             * dan tidak ada pilihan salah yang dicentang.
-             */
-            if (
-                $benar_dipilih == $total_kunci
-                && $salah_dipilih == 0
-                && $total_jawaban_siswa == $total_kunci
-            ) {
-                $status = 'Benar';
-            } elseif ($nilai > 0) {
-                $status = 'Sebagian benar';
-            } else {
-                $status = 'Salah';
-            }
-
-            return [$nilai, $status, $kunci];
+        if ((string) $row['kunci_jawaban'] === '1') {
+            $kunci[] = $label;
         }
+    }
+
+    $jawab = is_array($jawaban) ? $jawaban : [$jawaban];
+
+    /*
+     * Hilangkan jawaban duplikat.
+     */
+    $jawab = array_values(array_unique(array_map('strval', $jawab)));
+
+    /*
+     * Abaikan pilihan yang tidak tersedia pada soal.
+     */
+    $jawab = array_values(array_intersect($jawab, $semua_pilihan));
+
+    $total_pilihan = count($semua_pilihan);
+    $total_kunci = count($kunci);
+    $total_jawaban_siswa = count($jawab);
+
+    if ($total_pilihan == 0 || $total_kunci == 0) {
+        return [0, 'Salah', $kunci];
+    }
+
+    $benar_dipilih = 0;
+    $salah_dipilih = 0;
+
+    foreach ($jawab as $j) {
+        if (in_array($j, $kunci, true)) {
+            $benar_dipilih++;
+        } else {
+            $salah_dipilih++;
+        }
+    }
+
+    /*
+     * Hitung jumlah kunci benar yang tidak dipilih siswa.
+     */
+    $benar_tidak_dipilih = $total_kunci - $benar_dipilih;
+
+    /*
+     * Rumus final:
+     *
+     * 1. Jika tidak ada satu pun jawaban benar yang dipilih,
+     *    nilai langsung menjadi 0.
+     *
+     * 2. Jika ada jawaban benar yang dipilih:
+     *    pengurang diambil dari nilai terbesar antara:
+     *    - jumlah kunci benar yang tidak dipilih;
+     *    - jumlah jawaban salah yang dipilih.
+     *
+     * 3. Skor maksimal mengikuti jumlah seluruh pilihan.
+     */
+    if ($benar_dipilih == 0) {
+        $score = 0;
+    } else {
+        $pengurang = max(
+            $benar_tidak_dipilih,
+            $salah_dipilih
+        );
+
+        $score = $total_pilihan - $pengurang;
+    }
+
+    /*
+     * Pastikan skor tidak kurang dari 0 dan tidak melebihi
+     * jumlah seluruh pilihan.
+     */
+    $score = max(0, min($score, $total_pilihan));
+
+    /*
+     * Konversi skor mentah ke bobot soal.
+     *
+     * Contoh:
+     * skor 3 dari 4 dan bobot 5
+     * nilai = 3 / 4 × 5 = 3,75
+     */
+    $nilai = ($score / $total_pilihan) * $bobot;
+
+    /*
+     * Batasi nilai antara 0 sampai bobot maksimal soal.
+     */
+    $nilai = max(0, min($nilai, $bobot));
+
+    /*
+     * Status benar penuh hanya jika:
+     * - semua kunci benar dipilih;
+     * - tidak ada jawaban salah yang dipilih;
+     * - jumlah jawaban siswa sama dengan jumlah kunci.
+     */
+    if ($benar_dipilih == $total_kunci && $salah_dipilih == 0 && $total_jawaban_siswa == $total_kunci) {
+        $status = 'Benar';
+    } elseif ($nilai > 0) {
+        $status = 'Sebagian benar';
+    } else {
+        $status = 'Salah';
+    }
+
+    return [$nilai, $status, $kunci];
+}
 
         // Benar/Salah: jawaban berbentuk [id_jawaban => Benar/Salah]
         $rows = $this->db->query("SELECT * FROM soal_jawaban WHERE id_soal = ? ORDER BY urutan ASC, id ASC", [$soal['id']])->result_array();
