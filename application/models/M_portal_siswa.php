@@ -986,12 +986,6 @@ if ($soal['tipe_soal'] == 'pg_kompleks') {
      */
     $nilai = max(0, min($nilai, $bobot));
 
-    /*
-     * Status benar penuh hanya jika:
-     * - semua kunci benar dipilih;
-     * - tidak ada jawaban salah yang dipilih;
-     * - jumlah jawaban siswa sama dengan jumlah kunci.
-     */
     if ($benar_dipilih == $total_kunci && $salah_dipilih == 0 && $total_jawaban_siswa == $total_kunci) {
         $status = 'Benar';
     } elseif ($nilai > 0) {
@@ -1084,7 +1078,8 @@ if ($soal['tipe_soal'] == 'pg_kompleks') {
             }
         }
 
-        $nilai_akhir = $total_bobot > 0 ? round(($total_nilai / $total_bobot) * 100, 2) : 0;
+        // $nilai_akhir = $total_bobot > 0 ? round(($total_nilai / $total_bobot) * 100, 2) : 0;
+        $nilai_akhir = round($total_nilai, 2);
         $waktu_mulai = strtotime($pengerjaan['waktu_mulai']);
         $durasi_detik = max(time() - $waktu_mulai, 0);
 
