@@ -937,9 +937,6 @@ if ($soal['tipe_soal'] == 'pg_kompleks') {
         }
     }
 
-    /*
-     * Hitung jumlah kunci benar yang tidak dipilih siswa.
-     */
     $benar_tidak_dipilih = $total_kunci - $benar_dipilih;
 
     /*
@@ -980,12 +977,7 @@ if ($soal['tipe_soal'] == 'pg_kompleks') {
      * nilai = 3 / 4 × 5 = 3,75
      */
     $nilai = ($score / $total_pilihan) * $bobot;
-
-    /*
-     * Batasi nilai antara 0 sampai bobot maksimal soal.
-     */
     $nilai = max(0, min($nilai, $bobot));
-
     if ($benar_dipilih == $total_kunci && $salah_dipilih == 0 && $total_jawaban_siswa == $total_kunci) {
         $status = 'Benar';
     } elseif ($nilai > 0) {
