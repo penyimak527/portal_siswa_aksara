@@ -1,5 +1,5 @@
 <?php
-class Perkembangan extends CI_Controller
+class Perkembangan_belajar extends CI_Controller
 {
     function __construct()
     {
@@ -13,18 +13,19 @@ class Perkembangan extends CI_Controller
             redirect('/');
         }
 
-        $data['title'] = 'Perkembangan Siswa';
+        $data['title'] = 'Perkembangan Belajar';
+        $data['tahun_ajaran'] = $this->model->tahun_ajaran_perkembangan_result();
         $data['kelas'] = $this->model->kelas_riwayat_result();
         $data['mapel'] = $this->model->mapel_result();
 
         $this->load->view('template_siswa/header', $data);
-        $this->load->view('portal_siswa/perkembangan', $data);
+        $this->load->view('portal_siswa/perkembangan_belajar', $data);
         $this->load->view('template_siswa/footer');
     }
 
-    public function materi_bulanan_result()
+    public function perkembangan_result()
     {
-        $data = $this->model->materi_bulanan_result();
+        $data = $this->model->perkembangan_result();
 
         $this->output
             ->set_status_header(200)
@@ -34,9 +35,9 @@ class Perkembangan extends CI_Controller
         exit;
     }
 
-    public function perkembangan_result()
+    public function perkembangan_detail_result()
     {
-        $data = $this->model->perkembangan_result();
+        $data = $this->model->perkembangan_detail_result();
 
         $this->output
             ->set_status_header(200)

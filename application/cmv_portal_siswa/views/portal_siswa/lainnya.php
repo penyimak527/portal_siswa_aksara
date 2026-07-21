@@ -8,10 +8,10 @@
             <i class="ri-line-chart-line fs-4"></i>
         </div>
         <div class="flex-grow-1">
-            <h5 class="fw-bold mb-1">Perkembangan Siswa</h5>
+            <h5 class="fw-bold mb-1">Perkembangan Belajar</h5>
             <p class="text-muted small mb-0">Lihat grafik perkembangan hasil belajar setiap semester.</p>
         </div>
-        <a href="<?= base_url('perkembangan'); ?>" class="btn btn-outline-primary btn-touch px-3">Buka</a>
+        <a href="<?= base_url('perkembangan_belajar'); ?>" class="btn btn-outline-primary btn-touch px-3">Buka</a>
     </div>
 </div>
 

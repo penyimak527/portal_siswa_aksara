@@ -439,7 +439,7 @@ class M_portal_siswa extends CI_Model
         return $rows;
     }
 
-     public function ringkasan_dashboard()
+    public function ringkasan_dashboard()
     {
         $id_siswa = $this->current_id_siswa();
         $sesi_tersedia = count($this->sesi_tersedia());
@@ -516,7 +516,7 @@ class M_portal_siswa extends CI_Model
         ];
     }
 
-    
+
     public function riwayat_terbaru($limit = 5)
     {
         return $this->riwayat_result($limit);
@@ -863,42 +863,44 @@ class M_portal_siswa extends CI_Model
             return [$benar ? $bobot : 0, $benar ? 'Benar' : 'Salah', $kunci];
         }
 
-        // if ($soal['tipe_soal'] == 'pg_kompleks') {
-        //     $kunci = $this->kunci_soal($soal['id']);
-        //     $jawab = is_array($jawaban) ? $jawaban : [$jawaban];
-        //     $score = 0;
-        //     foreach ($jawab as $j) {
-        //         if (in_array($j, $kunci)) {
-        //             $score++;
-        //         } else {
-        //             $score--;
-        //         }
-        //     }
-        //     if ($score < 0) {
-        //         $score = 0;
-        //     }
-        //     $total_kunci = max(count($kunci), 1);
-        //     $nilai = ($score / $total_kunci) * $bobot;
-        //     if ($nilai > $bobot) {
-        //         $nilai = $bobot;
-        //     }
-        //     $status = $nilai == $bobot ? 'Benar' : ($nilai > 0 ? 'Sebagian benar' : 'Salah');
-        //     return [$nilai, $status, $kunci];
-        // }
-        if ($soal['tipe_soal'] == 'pg_kompleks') {
-    $kunci = $this->kunci_soal($soal['id']);
+if ($soal['tipe_soal'] == 'pg_kompleks') {
+    $rows = $this->db->query(
+        "SELECT label_jawaban, kunci_jawaban
+         FROM soal_jawaban
+         WHERE id_soal = ?
+         ORDER BY urutan ASC, id ASC",
+        [$soal['id']]
+    )->result_array();
+
+    $kunci = [];
+    $semua_pilihan = [];
+
+    foreach ($rows as $row) {
+        $label = (string) $row['label_jawaban'];
+        $semua_pilihan[] = $label;
+
+        if ((string) $row['kunci_jawaban'] === '1') {
+            $kunci[] = $label;
+        }
+    }
+
     $jawab = is_array($jawaban) ? $jawaban : [$jawaban];
 
     /*
-     * Hilangkan kemungkinan pilihan ganda yang sama terkirim
-     * lebih dari satu kali.
+     * Hilangkan jawaban duplikat.
      */
-    $jawab = array_values(array_unique($jawab));
+    $jawab = array_values(array_unique(array_map('strval', $jawab)));
 
+    /*
+     * Abaikan pilihan yang tidak tersedia pada soal.
+     */
+    $jawab = array_values(array_intersect($jawab, $semua_pilihan));
+
+    $total_pilihan = count($semua_pilihan);
     $total_kunci = count($kunci);
     $total_jawaban_siswa = count($jawab);
 
-    if ($total_kunci == 0) {
+    if ($total_pilihan == 0 || $total_kunci == 0) {
         return [0, 'Salah', $kunci];
     }
 
@@ -913,39 +915,48 @@ class M_portal_siswa extends CI_Model
         }
     }
 
-    /*
-     * Jika jumlah pilihan siswa tidak melebihi jumlah kunci benar,
-     * jawaban salah belum menjadi pengurang.
-     */
-    if ($total_jawaban_siswa <= $total_kunci) {
-        $score = $benar_dipilih;
-    } else {
-        /*
-         * Jika pilihan siswa melebihi jumlah kunci benar,
-         * jawaban salah mulai mengurangi jawaban benar.
-         */
-        $score = $benar_dipilih - $salah_dipilih;
-    }
+    $benar_tidak_dipilih = $total_kunci - $benar_dipilih;
 
-    if ($score < 0) {
+    /*
+     * Rumus final:
+     *
+     * 1. Jika tidak ada satu pun jawaban benar yang dipilih,
+     *    nilai langsung menjadi 0.
+     *
+     * 2. Jika ada jawaban benar yang dipilih:
+     *    pengurang diambil dari nilai terbesar antara:
+     *    - jumlah kunci benar yang tidak dipilih;
+     *    - jumlah jawaban salah yang dipilih.
+     *
+     * 3. Skor maksimal mengikuti jumlah seluruh pilihan.
+     */
+    if ($benar_dipilih == 0) {
         $score = 0;
-    }
+    } else {
+        $pengurang = max(
+            $benar_tidak_dipilih,
+            $salah_dipilih
+        );
 
-    $nilai = ($score / $total_kunci) * $bobot;
-
-    if ($nilai > $bobot) {
-        $nilai = $bobot;
+        $score = $total_pilihan - $pengurang;
     }
 
     /*
-     * Benar penuh hanya ketika seluruh kunci dipilih
-     * dan tidak ada pilihan salah.
+     * Pastikan skor tidak kurang dari 0 dan tidak melebihi
+     * jumlah seluruh pilihan.
      */
-    if (
-        $benar_dipilih == $total_kunci
-        && $salah_dipilih == 0
-        && $total_jawaban_siswa == $total_kunci
-    ) {
+    $score = max(0, min($score, $total_pilihan));
+
+    /*
+     * Konversi skor mentah ke bobot soal.
+     *
+     * Contoh:
+     * skor 3 dari 4 dan bobot 5
+     * nilai = 3 / 4 × 5 = 3,75
+     */
+    $nilai = ($score / $total_pilihan) * $bobot;
+    $nilai = max(0, min($nilai, $bobot));
+    if ($benar_dipilih == $total_kunci && $salah_dipilih == 0 && $total_jawaban_siswa == $total_kunci) {
         $status = 'Benar';
     } elseif ($nilai > 0) {
         $status = 'Sebagian benar';
@@ -1038,6 +1049,7 @@ class M_portal_siswa extends CI_Model
         }
 
         $nilai_akhir = $total_bobot > 0 ? round(($total_nilai / $total_bobot) * 100, 2) : 0;
+        // $nilai_akhir = round($total_nilai, 2);
         $waktu_mulai = strtotime($pengerjaan['waktu_mulai']);
         $durasi_detik = max(time() - $waktu_mulai, 0);
 
@@ -1084,37 +1096,33 @@ class M_portal_siswa extends CI_Model
         return $this->db->query($sql, [$id_pengerjaan])->result_array();
     }
 
-    // public function preview_diizinkan($id_pengerjaan)
-    // {
-    //     $row = $this->pengerjaan_detail($id_pengerjaan);
-    //     return (string) ($row['preview_diizinkan'] ?? '0') === '1';
-    // }
-public function preview_diizinkan($id_pengerjaan)
-{
-    $row = $this->pengerjaan_detail($id_pengerjaan);
 
-    if (!$row) {
-        return false;
+    public function preview_diizinkan($id_pengerjaan)
+    {
+        $row = $this->pengerjaan_detail($id_pengerjaan);
+
+        if (!$row) {
+            return false;
+        }
+
+        if ((string) ($row['preview_diizinkan'] ?? '0') !== '1') {
+            return false;
+        }
+
+        $tanggal_selesai = trim((string) ($row['tanggal_selesai'] ?? ''));
+
+        if ($tanggal_selesai === '') {
+            return false;
+        }
+
+        $tgl_selesai = strtotime($tanggal_selesai);
+        if (!$tgl_selesai) {
+            return false;
+        }
+
+        $hari_ini = strtotime(date('d-m-Y'));
+        return $hari_ini > $tgl_selesai;
     }
-
-    if ((string) ($row['preview_diizinkan'] ?? '0') !== '1') {
-        return false;
-    }
-
-    $tanggal_selesai = trim((string) ($row['tanggal_selesai'] ?? ''));
-
-    if ($tanggal_selesai === '') {
-        return false;
-    }
-
-    $tgl_selesai = strtotime($tanggal_selesai);
-    if (!$tgl_selesai) {
-        return false;
-    }
-
-    $hari_ini = strtotime(date('d-m-Y'));
-    return $hari_ini > $tgl_selesai;
-}
 
     private function label_jawaban_text($id_soal, $jawaban)
     {
@@ -1217,187 +1225,298 @@ public function preview_diizinkan($id_pengerjaan)
         return $rows;
     }
 
+     public function tahun_ajaran_perkembangan_result()
+    {
+        $id_siswa = $this->current_id_siswa();
+
+        return $this->db->query("SELECT DISTINCT tahun_ajaran
+            FROM siswa_pengerjaan
+            WHERE id_siswa = ?
+            AND tahun_ajaran IS NOT NULL
+            AND tahun_ajaran != ''
+            ORDER BY tahun_ajaran DESC", [$id_siswa])->result_array();
+    }
+
     public function perkembangan_result()
     {
         $id_siswa = $this->current_id_siswa();
+        $tahun_ajaran = trim((string) $this->input->post('tahun_ajaran'));
         $id_kelas = (int) $this->input->post('id_kelas');
-        $semester = trim((string) $this->input->post('semester'));
         $id_mata_pelajaran = (int) $this->input->post('id_mata_pelajaran');
-        $jenis_pengerjaan = trim((string) $this->input->post('jenis_pengerjaan'));
 
         if ($id_siswa <= 0) {
             return ['result' => 'false', 'status' => false, 'message' => 'Sesi login siswa tidak ditemukan.'];
         }
 
-        if (!in_array($semester, ['Ganjil', 'Genap'], true)) {
-            return ['result' => 'false', 'status' => false, 'message' => 'Silakan pilih semester Ganjil atau Genap.'];
+        if ($tahun_ajaran === '') {
+            return ['result' => 'false', 'status' => false, 'message' => 'Tahun ajaran wajib dipilih.'];
         }
 
-        if (!in_array($jenis_pengerjaan, ['', 'Bimbel', 'Rumah'], true)) {
-            return ['result' => 'false', 'status' => false, 'message' => 'Jenis pengerjaan tidak valid.'];
+        if ($id_kelas <= 0) {
+            return ['result' => 'false', 'status' => false, 'message' => 'Kelas wajib dipilih.'];
         }
 
         $tanggal_sql = "STR_TO_DATE(ps.waktu_selesai, '%d-%m-%Y %H:%i:%s')";
         $nilai_sql = "CAST(NULLIF(ps.nilai_akhir, '') AS DECIMAL(10,2))";
-
         $where = [
             'ps.id_siswa = ?',
+            'ps.tahun_ajaran = ?',
+            'ps.id_kelas = ?',
             "ps.status_pengerjaan IN ('Selesai', 'Waktu Habis', 'Selesai karena timer habis')",
             "{$tanggal_sql} IS NOT NULL",
             "{$nilai_sql} IS NOT NULL"
         ];
-        $params = [$id_siswa];
-
-        if ($id_kelas > 0) {
-            $where[] = 'ps.id_kelas = ?';
-            $params[] = $id_kelas;
-        }
-
-        if ($semester === 'Ganjil') {
-            $where[] = "MONTH({$tanggal_sql}) BETWEEN 7 AND 12";
-            $bulan_semester = [7 => 'Juli', 8 => 'Agustus', 9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'];
-        } else {
-            $where[] = "MONTH({$tanggal_sql}) BETWEEN 1 AND 6";
-            $bulan_semester = [1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April', 5 => 'Mei', 6 => 'Juni'];
-        }
+        $params = [$id_siswa, $tahun_ajaran, $id_kelas];
 
         if ($id_mata_pelajaran > 0) {
             $where[] = 'ss.id_mata_pelajaran = ?';
             $params[] = $id_mata_pelajaran;
         }
 
-        if ($jenis_pengerjaan !== '') {
-            $where[] = 'ps.jenis_pengerjaan = ?';
-            $params[] = $jenis_pengerjaan;
-        }
-
         $where_sql = implode(' AND ', $where);
+        $pengerjaan = $this->db->query("SELECT
+                ps.id,
+                ps.jenis_pengerjaan,
+                ps.waktu_selesai,
+                ROUND({$nilai_sql}, 2) AS nilai,
+                ss.nama_sesi,
+                mp.nama_mata_pelajaran,
+                DATE_FORMAT({$tanggal_sql}, '%Y-%m') AS periode,
+                DATE_FORMAT({$tanggal_sql}, '%d-%m-%Y') AS tanggal
+            FROM siswa_pengerjaan ps
+            INNER JOIN soal_sesi ss ON ss.id = ps.id_sesi_soal
+            LEFT JOIN mata_pelajaran mp ON mp.id = ss.id_mata_pelajaran
+            WHERE {$where_sql}
+            ORDER BY {$tanggal_sql} ASC, ps.id ASC", $params)->result_array();
 
-        $agregat_bulan = $this->db->query("SELECT
-                    MONTH({$tanggal_sql}) AS bulan,
-                    ps.jenis_pengerjaan,
-                    ROUND(AVG({$nilai_sql}), 2) AS rata_rata,
-                    ROUND(MIN({$nilai_sql}), 2) AS terendah,
-                    ROUND(MAX({$nilai_sql}), 2) AS tertinggi,
-                    COUNT(ps.id) AS jumlah
-                FROM siswa_pengerjaan ps
-                INNER JOIN soal_sesi ss ON ss.id = ps.id_sesi_soal
-                WHERE {$where_sql}
-                GROUP BY MONTH({$tanggal_sql}), ps.jenis_pengerjaan
-                ORDER BY MONTH({$tanggal_sql}) ASC", $params)->result_array();
-
-        if (empty($agregat_bulan)) {
+        if (empty($pengerjaan)) {
             return [
                 'result' => 'false',
                 'status' => false,
-                'message' => 'Belum ada data perkembangan sesuai filter.',
-                'ringkasan' => ['rata_rata' => 0, 'nilai_awal' => '-', 'nilai_terbaru' => '-', 'tren' => 'Belum cukup data'],
-                'grafik' => [],
-                'materi' => [],
-                'terbaru' => []
+                'message' => 'Belum ada data perkembangan untuk filter yang dipilih.'
             ];
         }
 
-        $lookup = [];
-        foreach ($agregat_bulan as $row) {
-            $lookup[(int) $row['bulan']][$row['jenis_pengerjaan']] = $row;
-        }
+        $nilai = array_map(function ($row) {
+            return (float) $row['nilai'];
+        }, $pengerjaan);
 
-        $grafik = [];
-        foreach ($bulan_semester as $nomor_bulan => $nama_bulan) {
-            $bimbel = $lookup[$nomor_bulan]['Bimbel'] ?? null;
-            $rumah = $lookup[$nomor_bulan]['Rumah'] ?? null;
-            $grafik[] = [
-                'bulan' => $nomor_bulan,
-                'label' => $nama_bulan,
-                'bimbel' => $bimbel ? round((float) $bimbel['rata_rata'], 2) : null,
-                'rumah' => $rumah ? round((float) $rumah['rata_rata'], 2) : null,
-                'jumlah_bimbel' => $bimbel ? (int) $bimbel['jumlah'] : 0,
-                'jumlah_rumah' => $rumah ? (int) $rumah['jumlah'] : 0,
-                'tertinggi_bimbel' => $bimbel ? round((float) $bimbel['tertinggi'], 2) : null,
-                'terendah_bimbel' => $bimbel ? round((float) $bimbel['terendah'], 2) : null,
-                'tertinggi_rumah' => $rumah ? round((float) $rumah['tertinggi'], 2) : null,
-                'terendah_rumah' => $rumah ? round((float) $rumah['terendah'], 2) : null
+        $nilai_awal = reset($nilai);
+        $nilai_akhir = end($nilai);
+        $selisih = $nilai_akhir - $nilai_awal;
+        $status_perkembangan = count($nilai) < 2
+            ? 'Belum cukup data'
+            : (abs($selisih) <= 2 ? 'Stabil' : ($selisih > 0 ? 'Meningkat' : 'Menurun'));
+
+        $chart_sesi = [];
+        foreach ($pengerjaan as $index => $row) {
+            $chart_sesi[] = [
+                'id_pengerjaan' => (int) $row['id'],
+                'label' => ($index + 1) . '. ' . ($row['tanggal'] ?? '-'),
+                'nama_sesi' => $row['nama_sesi'] ?? '-',
+                'mata_pelajaran' => $row['nama_mata_pelajaran'] ?? '-',
+                'jenis_pengerjaan' => $row['jenis_pengerjaan'] ?? '-',
+                'tanggal' => $row['tanggal'] ?? '-',
+                'nilai' => round((float) $row['nilai'], 2)
             ];
         }
 
-        $nilai_ringkasan = [];
-        foreach ($grafik as $row) {
-            if ($jenis_pengerjaan === 'Bimbel') {
-                if ($row['bimbel'] !== null) $nilai_ringkasan[] = $row['bimbel'];
-            } elseif ($jenis_pengerjaan === 'Rumah') {
-                if ($row['rumah'] !== null) $nilai_ringkasan[] = $row['rumah'];
-            } else {
-                $nilai_bulan = array_values(array_filter([$row['bimbel'], $row['rumah']], function ($nilai) {
-                    return $nilai !== null;
-                }));
-                if (!empty($nilai_bulan)) $nilai_ringkasan[] = array_sum($nilai_bulan) / count($nilai_bulan);
+        $bulan_indonesia = [
+            '01' => 'Januari', '02' => 'Februari', '03' => 'Maret',
+            '04' => 'April', '05' => 'Mei', '06' => 'Juni',
+            '07' => 'Juli', '08' => 'Agustus', '09' => 'September',
+            '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
+        ];
+        $kelompok_bulan = [];
+        foreach ($pengerjaan as $row) {
+            $periode = $row['periode'];
+            if (!isset($kelompok_bulan[$periode])) {
+                $kelompok_bulan[$periode] = [];
             }
+            $kelompok_bulan[$periode][] = (float) $row['nilai'];
         }
 
-        $rata_rata = round(array_sum($nilai_ringkasan) / count($nilai_ringkasan), 0);
-        $nilai_awal = round($nilai_ringkasan[0], 0);
-        $nilai_terbaru = round($nilai_ringkasan[count($nilai_ringkasan) - 1], 0);
-        $selisih = $nilai_terbaru - $nilai_awal;
-        $tren = count($nilai_ringkasan) < 2 ? 'Belum cukup data' : ($selisih > 0 ? 'Naik ' . $selisih . ' poin' : ($selisih < 0 ? 'Turun ' . abs($selisih) . ' poin' : 'Tetap'));
+        $chart_bulan = [];
+        foreach ($kelompok_bulan as $periode => $daftar_nilai) {
+            [$tahun, $bulan] = explode('-', $periode);
+            $chart_bulan[] = [
+                'periode' => $periode,
+                'label' => ($bulan_indonesia[$bulan] ?? $bulan) . ' ' . $tahun,
+                'nilai' => round(array_sum($daftar_nilai) / count($daftar_nilai), 2),
+                'jumlah_sesi' => count($daftar_nilai)
+            ];
+        }
 
         $jawaban_source = "(
             SELECT id_pengerjaan, id_soal, nilai, 'Bimbel' AS jenis_pengerjaan FROM siswa_jawaban_bimbel
             UNION ALL
             SELECT id_pengerjaan, id_soal, nilai, 'Rumah' AS jenis_pengerjaan FROM siswa_jawaban_rumah
         )";
-
         $materi_where = $where;
         $materi_where[] = 'm.id IS NOT NULL';
         $materi_where_sql = implode(' AND ', $materi_where);
 
-        $materi = $this->db->query("SELECT
-                    m.id,
-                    m.nama_materi,
-                    ROUND((SUM(COALESCE(CAST(js.nilai AS DECIMAL(10,2)), 0)) /
-                        NULLIF(SUM(CAST(so.bobot_nilai AS DECIMAL(10,2))), 0)) * 100, 2) AS persen
-                FROM {$jawaban_source} js
-                INNER JOIN siswa_pengerjaan ps ON ps.id = js.id_pengerjaan AND ps.jenis_pengerjaan = js.jenis_pengerjaan
-                INNER JOIN soal_sesi ss ON ss.id = ps.id_sesi_soal
-                INNER JOIN soal so ON so.id = js.id_soal AND so.status_hapus IS NULL
-                LEFT JOIN materi m ON m.id = so.id_materi
-                WHERE {$materi_where_sql}
-                GROUP BY m.id, m.nama_materi
-                ORDER BY persen DESC, m.nama_materi ASC", $params)->result_array();
+        $materi_rows = $this->db->query("SELECT
+                m.id,
+                m.nama_materi,
+                COUNT(js.id_soal) AS jumlah_soal,
+                ROUND((SUM(COALESCE(CAST(js.nilai AS DECIMAL(10,2)), 0)) /
+                    NULLIF(SUM(CAST(so.bobot_nilai AS DECIMAL(10,2))), 0)) * 100, 2) AS persen
+            FROM {$jawaban_source} js
+            INNER JOIN siswa_pengerjaan ps ON ps.id = js.id_pengerjaan
+                AND ps.jenis_pengerjaan = js.jenis_pengerjaan
+            INNER JOIN soal_sesi ss ON ss.id = ps.id_sesi_soal
+            INNER JOIN soal so ON so.id = js.id_soal AND so.status_hapus IS NULL
+            INNER JOIN materi m ON m.id = so.id_materi
+            WHERE {$materi_where_sql}
+            GROUP BY m.id, m.nama_materi
+            ORDER BY persen DESC, m.nama_materi ASC", $params)->result_array();
 
-        foreach ($materi as &$row) {
+        $materi_dikuasai = [];
+        $materi_lemah = [];
+        foreach ($materi_rows as $row) {
             $persen = max(0, min(100, (float) ($row['persen'] ?? 0)));
-            $row['persen'] = round($persen, 0);
-            // $row['status'] = $persen >= 86 ? 'Sangat Baik' : ($persen >= 76 ? 'Baik' : ($persen >= 60 ? 'Cukup' : 'Perlu Ditingkatkan'));
-            $row['status'] = $persen >= 70 ? 'Dikuasai' : 'Perlu Ditingkatkan';
-        }
-        unset($row);
+            $item = [
+                'id' => (int) $row['id'],
+                'nama_materi' => $row['nama_materi'] ?? '-',
+                'jumlah_soal' => (int) ($row['jumlah_soal'] ?? 0),
+                'persen' => round($persen, 2)
+            ];
 
-        $terbaru = $this->db->query("SELECT
-                    ss.nama_sesi,
-                    ps.jenis_pengerjaan,
-                    ROUND({$nilai_sql}, 0) AS nilai_akhir,
-                    DATE_FORMAT({$tanggal_sql}, '%d-%m-%Y') AS tanggal
-                FROM siswa_pengerjaan ps
-                INNER JOIN soal_sesi ss ON ss.id = ps.id_sesi_soal
-                WHERE {$where_sql}
-                ORDER BY {$tanggal_sql} DESC, ps.id DESC
-                LIMIT 5", $params)->result_array();
+            if ($persen >= 70) {
+                $materi_dikuasai[] = $item;
+            } else {
+                $materi_lemah[] = $item;
+            }
+        }
+
+        usort($materi_lemah, function ($a, $b) {
+            return $a['persen'] <=> $b['persen'];
+        });
+
+        $kelas = $this->db->query("SELECT k.nama_kelas, j.nama_jenjang
+            FROM kelas k
+            LEFT JOIN jenjang j ON j.id = k.id_jenjang
+            WHERE k.id = ?", [$id_kelas])->row_array();
+        $mapel = $id_mata_pelajaran > 0
+            ? $this->db->query("SELECT nama_mata_pelajaran FROM mata_pelajaran WHERE id = ?", [$id_mata_pelajaran])->row_array()
+            : [];
 
         return [
             'result' => 'true',
             'status' => true,
             'message' => 'Data perkembangan berhasil dimuat.',
             'ringkasan' => [
-                'rata_rata' => $rata_rata,
-                'nilai_awal' => $nilai_awal,
-                'nilai_terbaru' => $nilai_terbaru,
-                'tren' => $tren
+                'periode' => $tahun_ajaran,
+                'kelas' => trim(($kelas['nama_jenjang'] ?? '') . ' ' . ($kelas['nama_kelas'] ?? '')),
+                'mata_pelajaran' => $id_mata_pelajaran > 0 ? ($mapel['nama_mata_pelajaran'] ?? '-') : 'Semua Mata Pelajaran',
+                'jumlah_sesi' => count($nilai),
+                'rata_rata' => round(array_sum($nilai) / count($nilai), 2),
+                'nilai_tertinggi' => round(max($nilai), 2),
+                'nilai_terendah' => round(min($nilai), 2),
+                'status_perkembangan' => $status_perkembangan
             ],
-            'grafik' => $grafik,
-            'materi' => $materi,
-            'terbaru' => $terbaru
+            'chart_sesi' => $chart_sesi,
+            'chart_bulan' => $chart_bulan,
+            'materi_dikuasai' => $materi_dikuasai,
+            'materi_perlu_ditingkatkan' => $materi_lemah
         ];
+    }
+
+    public function perkembangan_detail_result()
+    {
+        $id_siswa = $this->current_id_siswa();
+        $jenis_detail = trim((string) $this->input->post('jenis_detail'));
+
+        if ($id_siswa <= 0) {
+            return ['result' => 'false', 'status' => false, 'message' => 'Sesi login siswa tidak ditemukan.'];
+        }
+
+        $tanggal_sql = "STR_TO_DATE(ps.waktu_selesai, '%d-%m-%Y %H:%i:%s')";
+        $nilai_sql = "CAST(NULLIF(ps.nilai_akhir, '') AS DECIMAL(10,2))";
+
+        if ($jenis_detail === 'sesi') {
+            $id_pengerjaan = (int) $this->input->post('id_pengerjaan');
+            $detail = $this->db->query("SELECT
+                    ss.nama_sesi,
+                    mp.nama_mata_pelajaran,
+                    ps.jenis_pengerjaan,
+                    DATE_FORMAT({$tanggal_sql}, '%d-%m-%Y') AS tanggal,
+                    ROUND({$nilai_sql}, 2) AS nilai
+                FROM siswa_pengerjaan ps
+                INNER JOIN soal_sesi ss ON ss.id = ps.id_sesi_soal
+                LEFT JOIN mata_pelajaran mp ON mp.id = ss.id_mata_pelajaran
+                WHERE ps.id = ? AND ps.id_siswa = ?
+                LIMIT 1", [$id_pengerjaan, $id_siswa])->row_array();
+
+            if (!$detail) {
+                return ['result' => 'false', 'status' => false, 'message' => 'Detail sesi tidak ditemukan.'];
+            }
+
+            return [
+                'result' => 'true',
+                'status' => true,
+                'jenis_detail' => 'sesi',
+                'detail' => $detail
+            ];
+        }
+
+        if ($jenis_detail === 'bulan') {
+            $periode = trim((string) $this->input->post('periode'));
+            $tahun_ajaran = trim((string) $this->input->post('tahun_ajaran'));
+            $id_kelas = (int) $this->input->post('id_kelas');
+            $id_mata_pelajaran = (int) $this->input->post('id_mata_pelajaran');
+
+            if (!preg_match('/^\d{4}-\d{2}$/', $periode) || $tahun_ajaran === '' || $id_kelas <= 0) {
+                return ['result' => 'false', 'status' => false, 'message' => 'Filter detail bulan tidak valid.'];
+            }
+
+            $where = [
+                'ps.id_siswa = ?',
+                'ps.tahun_ajaran = ?',
+                'ps.id_kelas = ?',
+                "DATE_FORMAT({$tanggal_sql}, '%Y-%m') = ?",
+                "ps.status_pengerjaan IN ('Selesai', 'Waktu Habis', 'Selesai karena timer habis')"
+            ];
+            $params = [$id_siswa, $tahun_ajaran, $id_kelas, $periode];
+
+            if ($id_mata_pelajaran > 0) {
+                $where[] = 'ss.id_mata_pelajaran = ?';
+                $params[] = $id_mata_pelajaran;
+            }
+
+            $rows = $this->db->query("SELECT
+                    ss.nama_sesi,
+                    mp.nama_mata_pelajaran,
+                    ps.jenis_pengerjaan,
+                    DATE_FORMAT({$tanggal_sql}, '%d-%m-%Y') AS tanggal,
+                    ROUND({$nilai_sql}, 2) AS nilai
+                FROM siswa_pengerjaan ps
+                INNER JOIN soal_sesi ss ON ss.id = ps.id_sesi_soal
+                LEFT JOIN mata_pelajaran mp ON mp.id = ss.id_mata_pelajaran
+                WHERE " . implode(' AND ', $where) . "
+                ORDER BY {$tanggal_sql} ASC, ps.id ASC", $params)->result_array();
+
+            if (empty($rows)) {
+                return ['result' => 'false', 'status' => false, 'message' => 'Detail bulan tidak ditemukan.'];
+            }
+
+            $nilai = array_map(function ($row) {
+                return (float) $row['nilai'];
+            }, $rows);
+
+            return [
+                'result' => 'true',
+                'status' => true,
+                'jenis_detail' => 'bulan',
+                'periode' => $periode,
+                'rata_rata' => round(array_sum($nilai) / count($nilai), 2),
+                'jumlah_sesi' => count($rows),
+                'daftar_sesi' => $rows
+            ];
+        }
+
+        return ['result' => 'false', 'status' => false, 'message' => 'Jenis detail tidak valid.'];
     }
 
 
@@ -1483,7 +1602,7 @@ public function preview_diizinkan($id_pengerjaan)
             'message' => 'Password berhasil diperbarui.'
         ];
     }
-     public function materi_bulanan_result()
+    public function materi_bulanan_result()
     {
         $id_siswa = $this->current_id_siswa();
         $id_kelas = (int) $this->input->post('id_kelas');
@@ -1513,9 +1632,18 @@ public function preview_diizinkan($id_pengerjaan)
         }
 
         $nama_bulan = [
-            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
-            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember'
+            1 => 'Januari',
+            2 => 'Februari',
+            3 => 'Maret',
+            4 => 'April',
+            5 => 'Mei',
+            6 => 'Juni',
+            7 => 'Juli',
+            8 => 'Agustus',
+            9 => 'September',
+            10 => 'Oktober',
+            11 => 'November',
+            12 => 'Desember'
         ];
 
         $tanggal_sql = "STR_TO_DATE(ps.waktu_selesai, '%d-%m-%Y %H:%i:%s')";
@@ -1580,11 +1708,13 @@ public function preview_diizinkan($id_pengerjaan)
         }
 
         usort($dikuasai, function ($a, $b) {
-            if ($a['persen'] === $b['persen']) return strcmp($a['nama_materi'], $b['nama_materi']);
+            if ($a['persen'] === $b['persen'])
+                return strcmp($a['nama_materi'], $b['nama_materi']);
             return $b['persen'] <=> $a['persen'];
         });
         usort($lemah, function ($a, $b) {
-            if ($a['persen'] === $b['persen']) return strcmp($a['nama_materi'], $b['nama_materi']);
+            if ($a['persen'] === $b['persen'])
+                return strcmp($a['nama_materi'], $b['nama_materi']);
             return $a['persen'] <=> $b['persen'];
         });
 
