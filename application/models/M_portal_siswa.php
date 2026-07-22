@@ -296,8 +296,6 @@ class M_portal_siswa extends CI_Model
                 continue;
             }
 
-            // Bimbel wajib aktif dan wajib ikut jadwal.
-// Kalau sesi nonaktif / jadwal habis dan belum Bimbel, jangan tampil.
             if ($attempt['jenis_pengerjaan'] == 'Bimbel' && !$attempt['lanjut']) {
                 if ((string) ($row['status_aktif'] ?? '0') !== '1') {
                     continue;

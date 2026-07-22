@@ -41,9 +41,31 @@
             </div>
         </div>
 
-        <button type="button" id="btn-tampilkan" class="btn btn-primary btn-touch w-100 mt-3">
+        <!-- <button type="button" id="btn-tampilkan" class="btn btn-primary btn-touch w-100 mt-3">
+            Tampilkan Perkembangan
+        </button> -->
+        <div class="row g-2 mt-3">
+    <div class="col-12 col-md-6">
+        <button type="button" id="btn-tampilkan" class="btn btn-outline-primary btn-touch w-100">
             Tampilkan Perkembangan
         </button>
+    </div>
+
+    <div class="col-12 col-md-6">
+        <button type="button" id="btn-laporan" class="btn btn-primary btn-touch w-100">
+            Download Laporan
+        </button>
+    </div>
+</div>
+
+<form id="form-laporan"
+      action="<?= base_url('laporan_perkembangan_belajar/download'); ?>"
+      method="POST"
+      class="d-none">
+    <input type="hidden" name="tahun_ajaran" id="laporan-tahun-ajaran">
+    <input type="hidden" name="id_kelas" id="laporan-id-kelas">
+    <input type="hidden" name="id_mata_pelajaran" id="laporan-id-mata-pelajaran">
+</form>
     </div>
 </div>
 
@@ -678,9 +700,9 @@
                 id_kelas: idKelas,
                 id_mata_pelajaran: $('#filter-mapel').val()
             },
-            beforeSend: function() {
-                $('#btn-tampilkan').prop('disabled', true).text('Memuat...');
-            },
+            // beforeSend: function() {
+            //     $('#btn-tampilkan').prop('disabled', true).text('Memuat...');
+            // },
             success: function(res) {
                 if (res.result !== 'true') {
                     dataPerkembangan = null;
@@ -721,32 +743,62 @@
         });
     }
 
-    $(document).on('change', '#detail-bulan-length', function() {
-        pagingDetailBulan(
-            $('#detail-bulan-list .detail-bulan-row'),
-            $(this).val()
-        );
+
+    function downloadLaporan() {
+        const tahunAjaran = $('#filter-tahun-ajaran').val();
+        const idKelas = $('#filter-kelas').val();
+        const idMataPelajaran = $('#filter-mapel').val();
+
+        if (!tahunAjaran || !idKelas) {
+            Swal.fire('Perhatian', 'Tahun ajaran dan kelas wajib dipilih.', 'warning');
+            return;
+        }
+
+        $('#laporan-tahun-ajaran').val(tahunAjaran);
+        $('#laporan-id-kelas').val(idKelas);
+        $('#laporan-id-mata-pelajaran').val(idMataPelajaran);
+
+        $('#form-laporan').submit();
+    }
+
+    $(document).ready(function () {
+        $(document).on('change', '#detail-bulan-length', function () {
+            pagingDetailBulan(
+                $('#detail-bulan-list .detail-bulan-row'),
+                $(this).val()
+            );
+        });
+
+        $('#modal-detail-bulan').on('hidden.bs.modal', function () {
+            $('#detail-bulan-list').empty();
+            $('#pagination-detail-bulan').empty();
+            $('#detail-bulan-content').addClass('d-none');
+            $('#detail-bulan-empty').addClass('d-none').empty();
+            paginationDetailBulan = null;
+        });
+
+        $('input[name="mode_chart"]').on('change', function () {
+            renderChart();
+        });
+
+        $('#btn-tampilkan').on('click', function () {
+            loadPerkembangan();
+        });
+
+        $('#btn-laporan').on('click', function () {
+            downloadLaporan();
+        });
+
+        if ($('#filter-tahun-ajaran option').length > 1) {
+            $('#filter-tahun-ajaran').prop('selectedIndex', 1);
+        }
+
+        if ($('#filter-kelas option').length > 1) {
+            $('#filter-kelas').prop('selectedIndex', 1);
+        }
+
+        if ($('#filter-tahun-ajaran').val() && $('#filter-kelas').val()) {
+            loadPerkembangan();
+        }
     });
-
-    $('#modal-detail-bulan').on('hidden.bs.modal', function() {
-        $('#detail-bulan-list').empty();
-        $('#pagination-detail-bulan').empty();
-        $('#detail-bulan-content').addClass('d-none');
-        $('#detail-bulan-empty').addClass('d-none').empty();
-        paginationDetailBulan = null;
-    });
-
-    $('input[name="mode_chart"]').on('change', renderChart);
-    $('#btn-tampilkan').on('click', loadPerkembangan);
-
-    if ($('#filter-tahun-ajaran option').length > 1) {
-        $('#filter-tahun-ajaran').prop('selectedIndex', 1);
-    }
-    if ($('#filter-kelas option').length > 1) {
-        $('#filter-kelas').prop('selectedIndex', 1);
-    }
-
-    if ($('#filter-tahun-ajaran').val() && $('#filter-kelas').val()) {
-        loadPerkembangan();
-    }
 </script>
