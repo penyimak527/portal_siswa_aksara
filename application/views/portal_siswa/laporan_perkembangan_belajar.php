@@ -13,11 +13,47 @@
             font-size: 10px;
             line-height: 1.4;
         }
-        .header { text-align: center; }
-        .header .lembaga { font-size: 13px; font-weight: bold; }
-        .header .judul { margin-top: 3px; font-size: 14px; font-weight: bold; }
-        .header .periode, .header .tanggal { margin-top: 2px; }
-        .separator { border-top: 1px solid #000; margin: 9px 0 12px; }
+        .kop-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .kop-logo {
+            width: 28%;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .kop-logo img {
+            width: 145px;
+            height: auto;
+            display: inline-block;
+        }
+        .kop-title {
+            width: 72%;
+            text-align: center;
+            vertical-align: middle;
+            padding-left: 8px;
+        }
+        .kop-title .judul {
+            font-size: 14px;
+            font-weight: bold;
+            line-height: 1.25;
+        }
+        .kop-title .periode {
+            margin-top: 4px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+        .kop-title .tanggal {
+            margin-top: 2px;
+            font-size: 9px;
+        }
+        .kop-line {
+            margin: 7px 0 12px;
+            border-top: 2px solid #000;
+            border-bottom: 1px solid #000;
+            height: 3px;
+        }
         .section { margin-bottom: 14px; page-break-inside: auto; }
         .section-title {
             margin: 0 0 5px;
@@ -83,6 +119,17 @@
 </head>
 <body>
 <?php
+    /*
+     * Logo dipasang sebagai base64 agar stabil ketika dirender oleh Dompdf.
+     * Lokasi file: /assets/aksara_edited.png
+     */
+    $logo_path = FCPATH . 'assets/aksara_edited.png';
+    $logo_src = '';
+
+    if (file_exists($logo_path)) {
+        $logo_src = 'data:image/png;base64,' . base64_encode(file_get_contents($logo_path));
+    }
+
     $nama_siswa = $siswa['nama_siswa'] ?? ($siswa['nama'] ?? '-');
     $nis = $siswa['nis'] ?? ($siswa['nisn'] ?? '-');
     $kelas = $ringkasan['kelas'] ?? ($siswa['nama_kelas'] ?? '-');
@@ -94,13 +141,29 @@
     };
 ?>
 
-<div class="header">
-    <div class="lembaga">AKSARA</div>
-    <div class="judul">LAPORAN PERKEMBANGAN BELAJAR SISWA</div>
-    <div class="periode">Semester <?= htmlspecialchars($semester, ENT_QUOTES, 'UTF-8'); ?> Tahun Ajaran <?= htmlspecialchars($tahun_ajaran, ENT_QUOTES, 'UTF-8'); ?></div>
-    <div class="tanggal">Tanggal Cetak: <?= htmlspecialchars($tanggal_cetak, ENT_QUOTES, 'UTF-8'); ?></div>
-</div>
-<div class="separator"></div>
+<table class="kop-table">
+    <tr>
+        <td class="kop-logo">
+            <?php if ($logo_src !== ''): ?>
+                <img src="<?= $logo_src; ?>" alt="Logo Aksara">
+            <?php else: ?>
+                <strong>AKSARA</strong>
+            <?php endif; ?>
+        </td>
+        <td class="kop-title">
+            <div class="judul">LAPORAN PERKEMBANGAN BELAJAR SISWA</div>
+            <div class="periode">
+                Semester <?= htmlspecialchars($semester, ENT_QUOTES, 'UTF-8'); ?>
+                Tahun Ajaran <?= htmlspecialchars($tahun_ajaran, ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+            <div class="tanggal">
+                Tanggal Cetak: <?= htmlspecialchars($tanggal_cetak, ENT_QUOTES, 'UTF-8'); ?>
+            </div>
+        </td>
+    </tr>
+</table>
+
+<div class="kop-line"></div>
 
 <div class="section">
     <div class="section-title">IDENTITAS SISWA</div>
@@ -249,10 +312,39 @@
                 $points[] = round($x, 2) . ',' . round($y, 2);
             }
 
-            if (count($points) > 1) {
-                $svg .= '<polyline points="' . implode(' ', $points) . '" fill="none" stroke="#000" stroke-width="1.4"/>';
-            }
+            // if (count($points) > 1) {
+            //     $svg .= '<polyline points="' . implode(' ', $points) . '" fill="none" stroke="#000" stroke-width="1.4"/>';
+            // }
+if (count($points) > 1) {
+    // Jika data lebih dari satu bulan, hubungkan semua titik
+    $svg .= '<polyline
+        points="' . implode(' ', $points) . '"
+        fill="none"
+        stroke="#000"
+        stroke-width="1.4"
+    />';
+} else {
+    // Jika hanya satu titik, buat garis panjang seperti satu chart
+    $item = $grafik_bulan[0];
 
+    $x = $left + ($plot_width / 2);
+    $nilai = max(0, min(100, (float) ($item['nilai'] ?? 0)));
+    $y = $top + $plot_height - (($nilai / 100) * $plot_height);
+
+    // Garis dibuat panjang hampir sepanjang area chart
+    $padding_garis = 18;
+    $x_awal = $left + $padding_garis;
+    $x_akhir = ($width - $right) - $padding_garis;
+
+    $svg .= '<line
+        x1="' . round($x_awal, 2) . '"
+        y1="' . round($y, 2) . '"
+        x2="' . round($x_akhir, 2) . '"
+        y2="' . round($y, 2) . '"
+        stroke="#000"
+        stroke-width="1.4"
+    />';
+}
             foreach ($grafik_bulan as $index => $item) {
                 $x = $jumlah > 1
                     ? $left + ($index * $step_x)
